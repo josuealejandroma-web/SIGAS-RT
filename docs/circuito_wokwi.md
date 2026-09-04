@@ -147,6 +147,8 @@ El test verifica:
 - LED rojo;
 - boton presionado y liberado.
 
+Para ejecutar este modo con el firmware de integracion FreeRTOS, el escenario mantiene presionado `resetBtn` al arrancar. Si el boton no esta presionado al inicio, el firmware entra al modo de operacion FreeRTOS.
+
 ## 13. Resultados obtenidos
 
 Resultados reales de la validacion Wokwi:

@@ -2,7 +2,16 @@ name: "SIGAS-RT hardware smoke test"
 version: 1
 author: "SIGAS-RT"
 steps:
+  - set-control:
+      part-id: resetBtn
+      control: pressed
+      value: 1
   - wait-serial: "[BOOT][SIGAS-RT] Hardware smoke test iniciado"
+  - set-control:
+      part-id: resetBtn
+      control: pressed
+      value: 0
+  - wait-serial: "[HW-TEST][RESET] RELEASED"
   - wait-serial: "[HW-TEST][MQ2-Z1] ADC_RAW="
   - wait-serial: "[HW-TEST][MQ2-Z2] ADC_RAW="
   - set-control:

@@ -16,13 +16,30 @@ constexpr uint8_t PIN_RESET_BUTTON = 23;
 constexpr uint8_t VALVE_OPEN_ANGLE = 20;
 constexpr uint8_t VALVE_CLOSED_ANGLE = 110;
 
+constexpr uint16_t ADC_WARNING_THRESHOLD_SIMULATION_ONLY = 1400;
+constexpr uint16_t ADC_HIGH_THRESHOLD_SIMULATION_ONLY = 3000;
+
+constexpr TickType_t SENSOR_PERIOD = pdMS_TO_TICKS(100);
+constexpr TickType_t DIAGNOSTICS_PERIOD = pdMS_TO_TICKS(500);
+constexpr TickType_t SAFETY_QUEUE_TIMEOUT = pdMS_TO_TICKS(50);
 constexpr TickType_t SENSOR_TEST_PERIOD = pdMS_TO_TICKS(500);
 constexpr TickType_t ACTUATOR_TEST_PERIOD = pdMS_TO_TICKS(750);
 constexpr TickType_t RESET_TEST_PERIOD = pdMS_TO_TICKS(50);
 
+constexpr UBaseType_t PRIORITY_ACTUATOR = 5;
+constexpr UBaseType_t PRIORITY_SAFETY = 4;
+constexpr UBaseType_t PRIORITY_SENSORS = 3;
+constexpr UBaseType_t PRIORITY_DIAGNOSTICS = 1;
+
 constexpr UBaseType_t SENSOR_TEST_PRIORITY = 3;
 constexpr UBaseType_t ACTUATOR_TEST_PRIORITY = 2;
 constexpr UBaseType_t RESET_TEST_PRIORITY = 2;
+
+constexpr UBaseType_t TASK_CORE = 1;
+constexpr uint16_t SENSOR_QUEUE_LENGTH = 1;
+constexpr uint16_t ACTUATOR_QUEUE_LENGTH = 1;
+constexpr uint16_t DIAGNOSTICS_QUEUE_LENGTH = 1;
+constexpr uint16_t TASK_STACK_WORDS = 4096;
 
 }  // namespace sigas
 

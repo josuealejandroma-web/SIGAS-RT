@@ -1,0 +1,102 @@
+name: "SIGAS-RT FreeRTOS integration test"
+version: 1
+author: "SIGAS-RT"
+steps:
+  - set-control:
+      part-id: resetBtn
+      control: pressed
+      value: 0
+  - set-control:
+      part-id: adcStimZ1
+      control: position
+      value: 0.1
+  - set-control:
+      part-id: adcStimZ2
+      control: position
+      value: 0.1
+  - wait-serial: "[BOOT][SIGAS-RT] FreeRTOS integration mode iniciado"
+  - wait-serial: "[TASK][TaskActuator] CREATED"
+  - wait-serial: "[TASK][TaskSafety] CREATED"
+  - wait-serial: "[TASK][TaskSensors] CREATED PERIOD_MS=100"
+  - wait-serial: "[TASK][TaskDiagnostics] CREATED"
+
+  - wait-serial: "[SENSORS] SEQ="
+  - wait-serial: "Z1=410 Z2=410"
+  - wait-serial: "[SAFETY] SEQ="
+  - wait-serial: "Z1=NORMAL Z2=NORMAL ACTION=NORMAL"
+  - wait-serial: "[ACTUATOR] ACTION=NORMAL VALVE=OPEN BUZZER=OFF GREEN=ON RED=OFF"
+
+  - set-control:
+      part-id: adcStimZ1
+      control: position
+      value: 0.5
+  - delay: 700ms
+  - wait-serial: "[SENSORS] SEQ="
+  - wait-serial: "Z1=2048 Z2=410"
+  - wait-serial: "[SAFETY] SEQ="
+  - wait-serial: "Z1=WARNING Z2=NORMAL ACTION=WARNING"
+
+  - set-control:
+      part-id: adcStimZ1
+      control: position
+      value: 0.1
+  - set-control:
+      part-id: adcStimZ2
+      control: position
+      value: 0.5
+  - delay: 700ms
+  - wait-serial: "[SENSORS] SEQ="
+  - wait-serial: "Z1=410 Z2=2048"
+  - wait-serial: "[SAFETY] SEQ="
+  - wait-serial: "Z1=NORMAL Z2=WARNING ACTION=WARNING"
+
+  - set-control:
+      part-id: adcStimZ1
+      control: position
+      value: 0.9
+  - set-control:
+      part-id: adcStimZ2
+      control: position
+      value: 0.1
+  - delay: 700ms
+  - wait-serial: "[SENSORS] SEQ="
+  - wait-serial: "Z1=3686 Z2=410"
+  - wait-serial: "[SAFETY] SEQ="
+  - wait-serial: "Z1=HIGH Z2=NORMAL ACTION=SAFE_CLOSE"
+  - wait-serial: "[ACTUATOR] ACTION=SAFE_CLOSE VALVE=CLOSED BUZZER=ON GREEN=OFF RED=ON"
+
+  - set-control:
+      part-id: adcStimZ1
+      control: position
+      value: 0.1
+  - set-control:
+      part-id: adcStimZ2
+      control: position
+      value: 0.9
+  - delay: 700ms
+  - wait-serial: "[SENSORS] SEQ="
+  - wait-serial: "Z1=410 Z2=3686"
+  - wait-serial: "[SAFETY] SEQ="
+  - wait-serial: "Z1=NORMAL Z2=HIGH ACTION=SAFE_CLOSE"
+  - wait-serial: "[ACTUATOR] ACTION=SAFE_CLOSE VALVE=CLOSED BUZZER=ON GREEN=OFF RED=ON"
+
+  - set-control:
+      part-id: adcStimZ1
+      control: position
+      value: 0.9
+  - set-control:
+      part-id: adcStimZ2
+      control: position
+      value: 0.9
+  - delay: 700ms
+  - wait-serial: "[SENSORS] SEQ="
+  - wait-serial: "Z1=3686 Z2=3686"
+  - wait-serial: "[SAFETY] SEQ="
+  - wait-serial: "Z1=HIGH Z2=HIGH ACTION=SAFE_CLOSE"
+  - wait-serial: "[ACTUATOR] ACTION=SAFE_CLOSE VALVE=CLOSED BUZZER=ON GREEN=OFF RED=ON"
+
+  - set-control:
+      part-id: resetBtn
+      control: pressed
+      value: 1
+  - wait-serial: "[RESET] PRESSED"

@@ -1,78 +1,83 @@
 # Diseno de tareas FreeRTOS
 
-La Fase 2 debe separar adquisicion, seguridad, actuacion, indicadores y diagnostico. `loop()` no debe contener la logica critica; solo puede quedar como tarea ociosa con `vTaskDelay()`.
+La Fase 2 separa adquisicion, seguridad, actuacion y diagnostico. `loop()` no contiene logica critica; queda como tarea ociosa con `vTaskDelay()`.
 
-## Tabla de tareas
+## Tabla de tareas implementada
 
-| Tarea | Tipo | Periodo | Prioridad propuesta | Deadline | Funcion |
+| Tarea | Tipo | Periodo | Prioridad | Deadline | Funcion |
 | --- | --- | --- | --- | --- | --- |
-| `TaskSensorZona1` | Periodica | 100 ms | Alta | 100 ms | Leer ADC Zona 1, timestamp y publicar muestra. |
-| `TaskSensorZona2` | Periodica | 100 ms | Alta | 100 ms | Leer ADC Zona 2, timestamp y publicar muestra. |
-| `TaskSafety` | Evento/periodica corta | Cola con timeout 50 ms | Muy alta | 500 ms desde `T_detect` a `T_command` | Evaluar muestras, confirmar criticidad, administrar estados y emitir comando seguro. |
-| `TaskActuator` | Evento | Inmediata al comando | Maxima o equivalente justificada | 500 ms compartido con `TaskSafety` | Cerrar valvula simulada, activar buzzer y estado critico. |
-| `TaskIndicators` | Periodica | 250 ms | Baja | No critico | Actualizar LED verde/rojo segun estado publicado. |
-| `TaskDiagnostics` | Periodica | 500 ms | Baja | No critico | Enviar por Serial ADC bruto, zona, estado, timestamps y mediciones temporales. |
+| `TaskSensors` | Periodica | 100 ms | 3 | 100 ms | Leer ADC Zona 1 y Zona 2, timestamp, boton y publicar una muestra consistente. |
+| `TaskSafety` | Evento con timeout | Cola con timeout 50 ms | 4 | No medido formalmente en este bloque | Clasificar muestras con umbrales experimentales Wokwi-only y emitir comando. |
+| `TaskActuator` | Evento | Inmediata al comando | 5 | No medido formalmente en este bloque | Control exclusivo de servo, buzzer, LED verde y LED rojo durante operacion normal. |
+| `TaskDiagnostics` | Periodica | 500 ms | 1 | No critico | Enviar por Serial muestras, decisiones, timestamps y estado de boton. |
 
-Prioridad propuesta numerica para ESP32/Arduino FreeRTOS:
+`TaskIndicators` queda absorbida por `TaskActuator` en este bloque para cumplir una regla simple: durante operacion normal, una sola tarea controla todos los actuadores fisicos. Si mas adelante se separan indicadores no criticos, deberan recibir estado sin tocar directamente el cierre seguro.
+
+## Prioridades
 
 | Tarea | Prioridad |
 | --- | --- |
 | `TaskActuator` | 5 |
 | `TaskSafety` | 4 |
-| `TaskSensorZona1` | 3 |
-| `TaskSensorZona2` | 3 |
-| `TaskIndicators` | 1 |
+| `TaskSensors` | 3 |
 | `TaskDiagnostics` | 1 |
+
+La prioridad relativa implementada es:
+
+```text
+TaskActuator / TaskSafety > TaskSensors > TaskDiagnostics
+```
 
 ## Comunicacion entre tareas
 
-Mecanismos previstos:
+Mecanismos implementados:
 
-- `QueueHandle_t sensorQueue`: recibe muestras ADC de ambas zonas.
+- `QueueHandle_t sensorQueue`: recibe muestras ADC atomicas de ambas zonas.
 - `QueueHandle_t actuatorQueue`: recibe comandos de actuacion desde `TaskSafety`.
-- `EventGroupHandle_t systemEvents`: publica banderas de estado para indicadores y diagnostico.
-- `QueueHandle_t diagnosticsQueue`: opcional si el volumen de mensajes seriales afecta tareas criticas.
+- `QueueHandle_t diagnosticsSampleQueue`: recibe la ultima muestra para diagnostico.
+- `QueueHandle_t diagnosticsDecisionQueue`: recibe la ultima decision para diagnostico.
 
-No se deben usar variables globales compartidas sin proteccion para datos que cambian en mas de una tarea. Si se necesita estado global de solo lectura para indicadores, debe actualizarse mediante queue, event group o seccion critica breve.
+Las colas tienen longitud 1 y se actualizan con `xQueueOverwrite()` porque la integracion necesita el valor mas reciente, no un backlog de muestras antiguas. No se usan variables globales compartidas como mecanismo principal de comunicacion entre tareas.
 
 ## Periodicidad
 
-Las tareas de sensores deben usar `vTaskDelayUntil()`:
+`TaskSensors` usa `vTaskDelayUntil()`:
 
 ```cpp
 TickType_t lastWake = xTaskGetTickCount();
 for (;;) {
   // leer ADC y publicar muestra
-  vTaskDelayUntil(&lastWake, SENSOR_PERIOD_TICKS);
+  vTaskDelayUntil(&lastWake, SENSOR_PERIOD);
 }
 ```
 
-Esto reduce deriva temporal frente a `delay()` y permite estimar mejor la latencia de confirmacion en el prototipo.
+`TaskDiagnostics` tambien usa `vTaskDelayUntil()` para limitar la carga del Serial Monitor. `TaskSafety` y `TaskActuator` bloquean sobre colas FreeRTOS; no hacen busy waiting.
 
-## Estados del sistema
-
-Estados minimos:
+## Estados logicos de integracion
 
 | Estado | Descripcion | Salidas |
 | --- | --- | --- |
-| `ESTADO_NORMAL` | Ambas zonas bajo umbral experimental seguro. | Valvula abierta, LED verde ON, LED rojo OFF, buzzer OFF. |
-| `ESTADO_ADVERTENCIA` | Al menos una zona supera umbral, pendiente de confirmacion. | Valvula abierta, diagnostico activo, sin cierre automatico todavia. |
-| `ESTADO_CRITICO` | Condicion peligrosa confirmada. | Orden de cierre, buzzer ON, LED rojo ON, LED verde OFF. |
-| `ESTADO_SEGURO_BLOQUEADO` | Sistema enclavado despues de criticidad. | Valvula cerrada, LED rojo ON, buzzer ON o patron de alarma definido. |
+| `NORMAL` | Ambas zonas bajo umbral experimental seguro. | Valvula abierta, LED verde ON, LED rojo OFF, buzzer OFF. |
+| `WARNING` | Al menos una zona supera el umbral experimental de advertencia. | Valvula abierta, LED verde ON, LED rojo ON, buzzer OFF. |
+| `HIGH` / `SAFE_CLOSE` | Al menos una zona supera el umbral alto experimental. | Orden de cierre, buzzer ON, LED rojo ON, LED verde OFF. |
 
-Transiciones:
+## Clasificacion experimental implementada
 
-```text
-NORMAL -> ADVERTENCIA
-ADVERTENCIA -> NORMAL
-ADVERTENCIA -> CRITICO
-CRITICO -> SEGURO_BLOQUEADO
-SEGURO_BLOQUEADO -> NORMAL solo con boton de rearme y sensores seguros
-```
+Este bloque no implementa confirmacion final por N muestras, filtrado ni histeresis. La clasificacion usada solo integra el flujo concurrente:
 
-## Estrategia de confirmacion
+| Nivel | Condicion Wokwi-only |
+| --- | --- |
+| `NORMAL` | ADC menor que `ADC_WARNING_THRESHOLD_SIMULATION_ONLY`. |
+| `WARNING` | ADC mayor o igual que `ADC_WARNING_THRESHOLD_SIMULATION_ONLY` y menor que `ADC_HIGH_THRESHOLD_SIMULATION_ONLY`. |
+| `HIGH` | ADC mayor o igual que `ADC_HIGH_THRESHOLD_SIMULATION_ONLY`. |
 
-Estrategia seleccionada para Fase 2: N muestras consecutivas por zona.
+Con los valores observados en Wokwi, 410 clasifica como `NORMAL`, 2048 como `WARNING` y 3686 como `HIGH`.
+
+Cuando aparece `HIGH`, `TaskSafety` emite `SAFE_CLOSE` y mantiene el cierre enclavado de forma experimental. El boton se detecta y registra, pero la politica final de rearme queda pendiente.
+
+## Estrategia de confirmacion futura
+
+Estrategia seleccionada para el siguiente bloque: N muestras consecutivas por zona.
 
 Propuesta:
 
@@ -89,9 +94,9 @@ Justificacion:
 - su latencia es acotada;
 - con periodo de 100 ms y 3 muestras, la confirmacion ocurre aproximadamente en 300 ms desde una fuga sostenida simulada.
 
-El deadline RT-03 no mide el tiempo de filtrado previo. RT-03 mide desde `T_detect`, momento de confirmacion, hasta `T_command`, momento en que la CPU emite la orden al actuador.
+El deadline RT-03 no se mide formalmente en este bloque. RT-03 debe medir desde `T_detect`, momento de confirmacion, hasta `T_command`, momento en que la CPU emite la orden al actuador.
 
-## Medicion temporal
+## Medicion temporal futura
 
 Variables logicas:
 
@@ -113,4 +118,4 @@ No se debe mezclar la orden al actuador con el movimiento fisico completo del ac
 - No depender de Internet para detectar ni cerrar.
 - No tratar ADC crudo como ppm certificado.
 - Mantener diagnostico serial como funcion secundaria.
-- Mantener la valvula cerrada hasta rearme explicito despues de estado critico.
+- Mantener la valvula cerrada hasta rearme explicito despues de estado alto experimental.
