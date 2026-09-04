@@ -183,9 +183,9 @@ Pinout propuesto para Fase 2:
 | Sensor Gas Zona 2 AO | GPIO35 | ADC1_CH7, solo entrada. |
 | Servo valvula simulada | GPIO18 | PWM. |
 | Buzzer | GPIO19 | Salida digital/PWM. |
-| LED verde | GPIO2 | Salida digital. |
-| LED rojo | GPIO5 | Salida digital. |
-| Boton rearme | GPIO4 | Entrada con pull-up. |
+| LED verde | GPIO21 | Salida digital. |
+| LED rojo | GPIO22 | Salida digital. |
+| Boton rearme | GPIO23 | Entrada con pull-up. |
 | Serial TX/RX | TX0/RX0 | Consola Wokwi CLI. |
 
 Se proponen canales ADC1 para evitar conflictos conocidos de ADC2 con subsistemas de radio en ESP32. Aunque el prototipo no usa Wi-Fi, ADC1 conserva una arquitectura mas robusta para futuras restricciones locales.

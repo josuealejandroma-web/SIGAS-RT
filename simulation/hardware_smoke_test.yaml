@@ -1,0 +1,58 @@
+name: "SIGAS-RT hardware smoke test"
+version: 1
+author: "SIGAS-RT"
+steps:
+  - wait-serial: "[BOOT][SIGAS-RT] Hardware smoke test iniciado"
+  - wait-serial: "[HW-TEST][MQ2-Z1] ADC_RAW="
+  - wait-serial: "[HW-TEST][MQ2-Z2] ADC_RAW="
+  - set-control:
+      part-id: adcStimZ1
+      control: position
+      value: 0.1
+  - set-control:
+      part-id: adcStimZ2
+      control: position
+      value: 0.1
+  - delay: 700ms
+  - wait-serial: "[HW-TEST][MQ2-Z1] ADC_RAW=410 LEVEL=LOW"
+  - wait-serial: "[HW-TEST][MQ2-Z2] ADC_RAW=410 LEVEL=LOW"
+  - set-control:
+      part-id: adcStimZ1
+      control: position
+      value: 0.5
+  - delay: 700ms
+  - wait-serial: "[HW-TEST][MQ2-Z1] ADC_RAW=2048 LEVEL=MEDIUM"
+  - set-control:
+      part-id: adcStimZ1
+      control: position
+      value: 0.9
+  - delay: 700ms
+  - wait-serial: "[HW-TEST][MQ2-Z1] ADC_RAW=3686 LEVEL=HIGH"
+  - set-control:
+      part-id: adcStimZ2
+      control: position
+      value: 0.5
+  - delay: 700ms
+  - wait-serial: "[HW-TEST][MQ2-Z2] ADC_RAW=2048 LEVEL=MEDIUM"
+  - set-control:
+      part-id: adcStimZ2
+      control: position
+      value: 0.9
+  - delay: 700ms
+  - wait-serial: "[HW-TEST][MQ2-Z2] ADC_RAW=3686 LEVEL=HIGH"
+  - wait-serial: "[HW-TEST][VALVE] OPEN"
+  - wait-serial: "[HW-TEST][VALVE] CLOSED"
+  - wait-serial: "[HW-TEST][BUZZER] ON"
+  - wait-serial: "[HW-TEST][BUZZER] OFF"
+  - wait-serial: "[HW-TEST][LED-GREEN] OK"
+  - wait-serial: "[HW-TEST][LED-RED] OK"
+  - set-control:
+      part-id: resetBtn
+      control: pressed
+      value: 1
+  - wait-serial: "[HW-TEST][RESET] PRESSED"
+  - set-control:
+      part-id: resetBtn
+      control: pressed
+      value: 0
+  - wait-serial: "[HW-TEST][RESET] RELEASED"

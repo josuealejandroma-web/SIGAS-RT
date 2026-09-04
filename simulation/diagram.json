@@ -11,41 +11,139 @@
       "attrs": {}
     },
     {
-      "type": "wokwi-led",
-      "id": "led1",
-      "top": -64,
-      "left": 178,
+      "type": "wokwi-gas-sensor",
+      "id": "mq2z1",
+      "top": -154,
+      "left": -280,
       "attrs": {
-        "color": "red"
+        "ppm": "400",
+        "threshold": "4.4"
+      }
+    },
+    {
+      "type": "wokwi-gas-sensor",
+      "id": "mq2z2",
+      "top": 32,
+      "left": -280,
+      "attrs": {
+        "ppm": "400",
+        "threshold": "4.4"
+      }
+    },
+    {
+      "type": "wokwi-slide-potentiometer",
+      "id": "adcStimZ1",
+      "top": -230,
+      "left": -30,
+      "attrs": {
+        "value": "128"
+      }
+    },
+    {
+      "type": "wokwi-slide-potentiometer",
+      "id": "adcStimZ2",
+      "top": 112,
+      "left": -30,
+      "attrs": {
+        "value": "128"
+      }
+    },
+    {
+      "type": "wokwi-servo",
+      "id": "valveServo",
+      "top": -152,
+      "left": 260,
+      "attrs": {
+        "horn": "single",
+        "hornColor": "#0f172a"
+      }
+    },
+    {
+      "type": "wokwi-buzzer",
+      "id": "buzzer1",
+      "top": 36,
+      "left": 300,
+      "attrs": {
+        "volume": "0.2"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "ledGreen",
+      "top": 180,
+      "left": 270,
+      "attrs": {
+        "color": "green",
+        "label": "NORMAL"
       }
     },
     {
       "type": "wokwi-resistor",
-      "id": "r1",
-      "top": 8,
-      "left": 205,
-      "rotate": 90,
+      "id": "rGreen",
+      "top": 195,
+      "left": 210,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "ledRed",
+      "top": 260,
+      "left": 270,
+      "attrs": {
+        "color": "red",
+        "label": "ALARMA"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "rRed",
+      "top": 275,
+      "left": 210,
       "attrs": {
         "value": "220"
       }
     },
     {
       "type": "wokwi-pushbutton",
-      "id": "btn1",
-      "top": 115,
-      "left": 176,
+      "id": "resetBtn",
+      "top": 190,
+      "left": -210,
       "attrs": {
-        "color": "green",
-        "bounce": "0"
+        "color": "blue",
+        "label": "RESET",
+        "bounce": "0",
+        "key": "R"
       }
     }
   ],
   "connections": [
-    ["esp:D2", "r1:1", "green", ["h0"]],
-    ["r1:2", "led1:A", "green", ["v0"]],
-    ["led1:C", "esp:GND.1", "black", ["v0"]],
-    ["esp:D4", "btn1:1.l", "blue", ["h0"]],
-    ["btn1:2.l", "esp:GND.2", "black", ["h0"]],
+    ["esp:3V3", "mq2z1:VCC", "red", ["h0"]],
+    ["esp:GND.1", "mq2z1:GND", "black", ["h0"]],
+    ["mq2z1:AOUT", "esp:D34", "green", ["h0"]],
+    ["esp:3V3", "adcStimZ1:VCC", "red", ["h0"]],
+    ["esp:GND.1", "adcStimZ1:GND", "black", ["h0"]],
+    ["adcStimZ1:SIG", "esp:D34", "green", ["h0"]],
+    ["esp:3V3", "mq2z2:VCC", "red", ["h0"]],
+    ["esp:GND.1", "mq2z2:GND", "black", ["h0"]],
+    ["mq2z2:AOUT", "esp:D35", "green", ["h0"]],
+    ["esp:3V3", "adcStimZ2:VCC", "red", ["h0"]],
+    ["esp:GND.1", "adcStimZ2:GND", "black", ["h0"]],
+    ["adcStimZ2:SIG", "esp:D35", "green", ["h0"]],
+    ["esp:D18", "valveServo:PWM", "orange", ["h0"]],
+    ["esp:VIN", "valveServo:V+", "red", ["h0"]],
+    ["esp:GND.2", "valveServo:GND", "black", ["h0"]],
+    ["esp:D19", "buzzer1:2", "purple", ["h0"]],
+    ["buzzer1:1", "esp:GND.2", "black", ["h0"]],
+    ["esp:D21", "rGreen:1", "green", ["h0"]],
+    ["rGreen:2", "ledGreen:A", "green", ["h0"]],
+    ["ledGreen:C", "esp:GND.2", "black", ["h0"]],
+    ["esp:D22", "rRed:1", "red", ["h0"]],
+    ["rRed:2", "ledRed:A", "red", ["h0"]],
+    ["ledRed:C", "esp:GND.2", "black", ["h0"]],
+    ["esp:D23", "resetBtn:1.l", "blue", ["h0"]],
+    ["resetBtn:2.l", "esp:GND.2", "black", ["h0"]],
     ["esp:TX0", "$serialMonitor:RX", "", []],
     ["esp:RX0", "$serialMonitor:TX", "", []]
   ],
