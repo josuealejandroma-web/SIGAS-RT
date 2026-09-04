@@ -173,6 +173,7 @@ Paquetes ESP32 instalados por PlatformIO durante la primera compilacion:
 
 ```text
 platform = espressif32@7.1.0
+board = esp32doit-devkit-v1
 framework-arduinoespressif32 = 3.20017.241212+sha.dcc1105b
 tool-esptoolpy = 2.41100.260830 / esptool.py 4.11.0
 toolchain-xtensa-esp32 = 8.4.0+2021r2-patch5
@@ -271,7 +272,7 @@ scoop: no reconocido
 - Python esta disponible como `python` y `py`, pero `pip` no esta publicado como comando directo. Usar `py -m pip` evita ambiguedades.
 - PlatformIO no esta instalado. Se recomienda instalarlo mediante la extension oficial de VS Code o mediante un entorno Python aislado para evitar contaminar paquetes globales.
 - Wokwi CLI requiere token `WOKWI_CLI_TOKEN` para ejecutar simulaciones con Wokwi CI/MCP.
-- Wokwi MCP quedo registrado en Codex como servidor global apuntando al binario local del proyecto. La simulacion real no puede validarse hasta configurar `WOKWI_CLI_TOKEN`.
+- Wokwi MCP quedo registrado en Codex como servidor global apuntando al binario local del proyecto.
 - `platformio device list` no devolvio puertos seriales. No hay una placa fisica conectada o detectable en esta sesion.
 
 ## Instalaciones completadas
@@ -289,9 +290,9 @@ scoop: no reconocido
 
 ## Pendiente
 
-- Configurar `WOKWI_CLI_TOKEN` con un token real de Wokwi CI.
+- Definir `WOKWI_CLI_TOKEN` en cada sesion o persistirlo en variables de entorno de usuario para que Wokwi CLI/MCP funcionen despues de reiniciar terminal o Codex.
 - Reiniciar terminal o VS Code si se desea que `arduino-cli` quede disponible sin ruta absoluta.
-- Ejecutar simulacion Wokwi completa despues de configurar token.
+- Simulacion Wokwi completa validada con token definido en la sesion actual.
 - Validar carga en hardware fisico cuando se conecte una placa ESP32.
 
 ## Proyecto minimo creado
@@ -301,9 +302,10 @@ Archivos:
 ```text
 platformio.ini
 src/main.cpp
-wokwi.toml
 simulation/diagram.json
+simulation/wokwi.toml
 simulation/button_led.test.yaml
+simulation/merge_firmware.py
 ```
 
 El ejemplo contiene solamente infraestructura:
@@ -339,8 +341,8 @@ Flash: 20.6% (used 270117 bytes from 1310720 bytes)
 Artefactos generados:
 
 ```text
-.pio/build/esp32dev/firmware.elf
-.pio/build/esp32dev/firmware.bin
+.pio/build/esp32doit-devkit-v1/firmware.elf
+.pio/build/esp32doit-devkit-v1/firmware.bin
 ```
 
 Base de datos de compilacion:
@@ -369,26 +371,45 @@ Found 1 info
 unsupported-part: Part "esp" uses undocumented type "board-esp32-devkit-c-v4".
 ```
 
-El linter no reporto errores. La advertencia es informativa sobre el tipo de placa usado por Wokwi.
+El linter no reporto errores. Posteriormente se ajusto la placa a `wokwi-esp32-devkit-v1` para mejorar compatibilidad de simulacion con el firmware PlatformIO/ESP32. En ese tipo de placa, las conexiones usan nombres `D2` y `D4` en el diagrama para los GPIO 2 y 4 del firmware. Tambien se conecto UART0 (`TX0`/`RX0`) al `$serialMonitor` virtual para que Wokwi CLI pueda capturar la salida serial.
 
 Simulacion Wokwi:
 
 ```powershell
-.\tools\wokwi-cli.exe . --timeout 5000 --expect-text "[SIGAS-RT] Prueba de entorno ESP32 + FreeRTOS iniciada"
+.\tools\wokwi-cli.exe --timeout 5000 --expect-text "[SIGAS-RT] Prueba de entorno ESP32 + FreeRTOS iniciada" simulation
 ```
 
-Resultado:
+Resultado inicial sin token:
 
 ```text
 Error: Missing WOKWI_CLI_TOKEN environment variable.
 ```
 
-La simulacion queda pendiente de token.
+La simulacion quedo pendiente de token durante la primera auditoria. Despues de definir un token Wokwi en la sesion de PowerShell, la simulacion conecto con Wokwi Simulation API y el escenario `button_led.test.yaml` se completo correctamente.
+
+Comando validado:
+
+```powershell
+cd simulation
+..\tools\wokwi-cli.exe --timeout 30000 --scenario button_led.test.yaml --serial-log-file wokwi-serial.log .
+```
+
+Resultado validado:
+
+```text
+Connected to Wokwi Simulation API 1.0.0-20260903-g7707805d
+[SIGAS-RT] Prueba de entorno ESP32 + FreeRTOS iniciada
+[TaskSensor] Entrada fisica: boton=PRESIONADO
+[TaskControl] CPU/RT: salida=ON prioridad=2
+[TaskActuator] Actuador: LED=ON
+[TaskActuator] Actuador: LED=OFF
+[ESP32 button to LED smoke test] Scenario completed successfully
+```
 
 MCP Wokwi:
 
 ```powershell
-codex mcp add Wokwi -- "C:\Users\josue\Proyectos\SIGAS-RT\tools\wokwi-cli.exe" mcp "C:\Users\josue\Proyectos\SIGAS-RT"
+codex mcp add Wokwi -- "C:\Users\josue\Proyectos\SIGAS-RT\tools\wokwi-cli.exe" mcp "C:\Users\josue\Proyectos\SIGAS-RT\simulation"
 codex mcp get Wokwi
 codex mcp list
 ```
@@ -399,10 +420,10 @@ Resultado:
 Wokwi enabled: true
 transport: stdio
 command: C:\Users\josue\Proyectos\SIGAS-RT\tools\wokwi-cli.exe
-args: mcp C:\Users\josue\Proyectos\SIGAS-RT
+args: mcp C:\Users\josue\Proyectos\SIGAS-RT\simulation
 ```
 
-La comunicacion MCP queda declarada en Codex. La validacion funcional completa requiere token Wokwi.
+La comunicacion MCP queda declarada en Codex. Para que el servidor MCP funcione despues de reiniciar Codex, `WOKWI_CLI_TOKEN` debe estar disponible en el entorno del proceso de Codex.
 
 ## Comandos utilizados
 
@@ -426,6 +447,18 @@ py -m venv .venv
 .\.venv\Scripts\platformio --version
 ```
 
+Compilar y generar firmware combinado para Wokwi:
+
+```powershell
+.\.venv\Scripts\platformio run
+```
+
+El script `simulation/merge_firmware.py` se ejecuta despues del build y genera:
+
+```text
+simulation/firmware-merged.bin
+```
+
 Instalar Arduino CLI:
 
 ```powershell
@@ -443,7 +476,7 @@ Invoke-WebRequest -Uri https://github.com/wokwi/wokwi-cli/releases/download/v0.2
 Registrar MCP:
 
 ```powershell
-codex mcp add Wokwi -- "C:\Users\josue\Proyectos\SIGAS-RT\tools\wokwi-cli.exe" mcp "C:\Users\josue\Proyectos\SIGAS-RT"
+codex mcp add Wokwi -- "C:\Users\josue\Proyectos\SIGAS-RT\tools\wokwi-cli.exe" mcp "C:\Users\josue\Proyectos\SIGAS-RT\simulation"
 ```
 
 ## Fuentes oficiales consultadas
@@ -456,7 +489,7 @@ codex mcp add Wokwi -- "C:\Users\josue\Proyectos\SIGAS-RT\tools\wokwi-cli.exe" m
 
 ## Pendiente de token Wokwi
 
-Para finalizar la validacion Wokwi/MCP, definir un token real:
+Para que Wokwi CLI/MCP sigan funcionando tras abrir una terminal nueva o reiniciar Codex, persistir el token real como variable de entorno de usuario. No guardar el token en archivos del repositorio:
 
 ```powershell
 setx WOKWI_CLI_TOKEN "wok_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
@@ -465,6 +498,7 @@ setx WOKWI_CLI_TOKEN "wok_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 Despues abrir una terminal nueva y ejecutar:
 
 ```powershell
-.\tools\wokwi-cli.exe . --timeout 10000 --scenario simulation\button_led.test.yaml
+cd simulation
+..\tools\wokwi-cli.exe --timeout 10000 --scenario button_led.test.yaml .
 codex mcp list
 ```
