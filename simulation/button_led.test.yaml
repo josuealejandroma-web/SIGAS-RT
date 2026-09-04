@@ -1,0 +1,17 @@
+name: "ESP32 button to LED smoke test"
+version: 1
+author: "SIGAS-RT"
+steps:
+  - wait-serial: "[SIGAS-RT] Prueba de entorno ESP32 + FreeRTOS iniciada"
+  - set-control:
+      part-id: btn1
+      control: pressed
+      value: 1
+  - delay: 500ms
+  - wait-serial: "[TaskActuator] Actuador: LED=ON"
+  - set-control:
+      part-id: btn1
+      control: pressed
+      value: 0
+  - delay: 500ms
+  - wait-serial: "[TaskActuator] Actuador: LED=OFF"

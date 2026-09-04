@@ -14,6 +14,7 @@ No crear ni modificar:
 
 - páginas web externas.
 - aplicaciones móviles.
+- APK.
 - bases de datos.
 - servidores.
 - configuraciones del sistema operativo.
@@ -39,6 +40,15 @@ CPU
 Procesamiento tiempo real
 ↓
 Actuador
+
+No depender de Internet para funciones críticas del sistema embebido.
+
+Mantener separación entre:
+
+- lógica crítica de detección/control en tiempo real.
+- comunicación externa, simulación, documentación y herramientas auxiliares.
+
+Documentar decisiones técnicas relevantes en `docs/`.
 
 ## Antes de modificar archivos
 

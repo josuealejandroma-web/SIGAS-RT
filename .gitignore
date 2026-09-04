@@ -1,5 +1,6 @@
 # PlatformIO
 .pio/
+compile_commands.json
 
 # VS Code
 .vscode/
@@ -16,10 +17,14 @@
 # Python
 __pycache__/
 *.pyc
+.venv/
 
 # Temporales
 *.tmp
 *.temp
+
+# Herramientas locales descargadas
+tools/
 
 # Sistema
 Thumbs.db
