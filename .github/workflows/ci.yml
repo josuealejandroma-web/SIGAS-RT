@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PlatformIO
+        run: python -m pip install --upgrade platformio
+
+      - name: Build firmware
+        run: platformio run -e esp32doit-devkit-v1
+
+      - name: Build visualization firmware
+        run: platformio run -e esp32doit-devkit-v1-visualization
+
+      - name: Bridge unit tests
+        run: python -m unittest discover visualization/bridge/tests
+
+      - name: JSON validation
+        run: |
+          python -m json.tool visualization/scenarios/scenario_catalog.json >/dev/null
+          python -m json.tool visualization/scenarios/visual_scenarios.json >/dev/null
+
+      - name: Whitespace check
+        run: git diff --check

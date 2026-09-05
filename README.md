@@ -60,6 +60,44 @@ powershell -ExecutionPolicy Bypass -File simulation\run_timing_measurements.ps1 
 
 El token de Wokwi debe estar en la variable de entorno de usuario o de proceso `WOKWI_CLI_TOKEN`. No se almacena en el repositorio.
 
+## Gemelo digital local
+
+El gemelo digital esta en `visualization/`:
+
+- `visualization/godot/`: casa 3D con tuberias, sensores, ESP32, valvula, LEDs, buzzer, HUD y camara orbital.
+- `visualization/bridge/`: bridge Python local entre Wokwi CLI y Godot.
+- `visualization/scenarios/`: comandos permitidos y metadatos visuales.
+
+Ejecutar pruebas del bridge:
+
+```powershell
+python -m unittest discover visualization\bridge\tests
+```
+
+Compilar firmware con telemetria para visualizacion:
+
+```powershell
+.\.venv\Scripts\platformio run -e esp32doit-devkit-v1-visualization
+```
+
+Abrir el gemelo digital y bridge local:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\run_digital_twin.ps1
+```
+
+Si `godot` no esta en `PATH`, el script deja claro que debe instalarse Godot 4 o ejecutarse manualmente el proyecto `visualization\godot`.
+
+## Verificacion
+
+Verificacion local amplia:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\verify_all.ps1
+```
+
+La validacion Wokwi requiere `WOKWI_CLI_TOKEN` en el entorno. La validacion headless de Godot requiere `godot` en `PATH`; si no esta disponible, el script lo informa sin almacenar credenciales.
+
 ## Limitaciones
 
 - Wokwi no certifica comportamiento hard real-time ni tiempos fisicos de actuadores.
