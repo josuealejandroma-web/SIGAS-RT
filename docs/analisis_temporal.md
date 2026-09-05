@@ -30,6 +30,7 @@ Antes de este bloque, `RT-03` estaba escrito hasta `T_command`. La formulacion u
 | `T_CRITICAL_CONFIRMED` | Confirmacion de 3 muestras `HIGH` consecutivas. |
 | `T_COMMAND_SENT` | Publicacion del comando en `actuatorQueue`. |
 | `T_ACTUATOR_RECEIVED` | Recepcion del comando por `TaskActuator`. |
+| `T_ACTUATOR_APPLIED` | Salidas GPIO/PWM aplicadas por `TaskActuator`. |
 
 Tiempos calculados:
 
@@ -38,8 +39,11 @@ Tiempos calculados:
 | `confirmation_time_us` | `T_CRITICAL_CONFIRMED - T_FIRST_HIGH` |
 | `command_latency_us` | `T_COMMAND_SENT - T_CRITICAL_CONFIRMED` |
 | `dispatch_latency_us` | `T_ACTUATOR_RECEIVED - T_COMMAND_SENT` |
-| `post_confirmation_response_us` | `T_ACTUATOR_RECEIVED - T_CRITICAL_CONFIRMED` |
-| `end_to_end_us` | `T_ACTUATOR_RECEIVED - T_FIRST_HIGH` |
+| `actuator_apply_us` | `T_ACTUATOR_APPLIED - T_ACTUATOR_RECEIVED` |
+| `post_confirmation_received_us` | `T_ACTUATOR_RECEIVED - T_CRITICAL_CONFIRMED` |
+| `post_confirmation_applied_us` | `T_ACTUATOR_APPLIED - T_CRITICAL_CONFIRMED` |
+| `end_to_end_received_us` | `T_ACTUATOR_RECEIVED - T_FIRST_HIGH` |
+| `end_to_end_applied_us` | `T_ACTUATOR_APPLIED - T_FIRST_HIGH` |
 
 ## Metodologia
 
@@ -58,29 +62,31 @@ Se ejecutaron 25 corridas temporales:
 
 | Grupo | Metrica | Min us | Promedio us | Mediana us | Max us | P95 us | P99 us |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Normal | `confirmation_time_us` | 200049 | 200051.1 | 200051 | 200052 | 200052 | 200052 |
-| Normal | `post_confirmation_response_us` | 23122 | 23122.7 | 23123 | 23123 | 23123 | 23123 |
-| Normal | `end_to_end_us` | 223172 | 223173.8 | 223174 | 223175 | 223175 | 223175 |
-| Diagnostico con carga | `confirmation_time_us` | 200051 | 200051.6 | 200052 | 200052 | 200052 | 200052 |
-| Diagnostico con carga | `post_confirmation_response_us` | 23122 | 23122.6 | 23123 | 23123 | 23123 | 23123 |
-| Diagnostico con carga | `end_to_end_us` | 223174 | 223174.2 | 223174 | 223175 | 223175 | 223175 |
+| Normal | `confirmation_time_us` | 200050 | 200051.4 | 200052 | 200052 | 200052 | 200052 |
+| Normal | `post_confirmation_received_us` | 22342 | 22441.9 | 22419 | 22502 | 22502 | 22502 |
+| Normal | `post_confirmation_applied_us` | 22878 | 22960.25 | 22936.5 | 23019 | 23019 | 23019 |
+| Normal | `end_to_end_received_us` | 222392 | 222493.3 | 222469 | 222554 | 222554 | 222554 |
+| Diagnostico con carga | `confirmation_time_us` | 200052 | 200052 | 200052 | 200052 | 200052 | 200052 |
+| Diagnostico con carga | `post_confirmation_received_us` | 22413 | 22466.6 | 22502 | 22502 | 22502 | 22502 |
+| Diagnostico con carga | `post_confirmation_applied_us` | 22931 | 22983.8 | 23019 | 23019 | 23019 | 23019 |
+| Diagnostico con carga | `end_to_end_received_us` | 222465 | 222518.6 | 222554 | 222554 | 222554 | 222554 |
 
 ## Worst Observed Response Time
 
 El maximo observado para el criterio `RT-03` fue:
 
 ```text
-Worst Observed Response Time (WORT) = 23123 us
+Worst Observed Response Time (WORT) = 22502 us
 Deadline = 500000 us
-Safety Margin = 476877 us
-MarginPercent = 95.38 %
+Safety Margin = 477498 us
+MarginPercent = 95.50 %
 ```
 
 Todas las corridas medidas cumplieron el deadline:
 
 | runs_total | passes | fails | worst_response_us | deadline_us | margin_us |
 | ---: | ---: | ---: | ---: | ---: | ---: |
-| 25 | 25 | 0 | 23123 | 500000 | 476877 |
+| 25 | 25 | 0 | 22502 | 500000 | 477498 |
 
 ## Periodicidad y confirmacion
 
@@ -111,7 +117,7 @@ dependiendo de la fase relativa entre el evento fisico y el periodo de muestreo.
 | `TaskSensors` | Periodica, 100 ms | 3 | Critica de adquisicion | Publica muestra mas reciente. |
 | `TaskDiagnostics` | Periodica, 500 ms | 1 | No critica | Puede consumir CPU y Serial, pero tiene menor prioridad. |
 
-La prueba TT-04 compilo una variante con `SIGAS_RT_DIAGNOSTICS_LOAD`, que ejecuta una carga artificial controlada en `TaskDiagnostics`. El peor `post_confirmation_response_us` bajo carga fue 23123 us, igual al peor valor normal. La tarea de diagnostico no impidio la ejecucion de `TaskSafety` ni de `TaskActuator` en estas mediciones.
+La prueba TT-04 compilo una variante con `SIGAS_RT_DIAGNOSTICS_LOAD`, que ejecuta una carga artificial controlada en `TaskDiagnostics`. El peor `post_confirmation_received_us` bajo carga fue 22502 us. La tarea de diagnostico no impidio la ejecucion de `TaskSafety` ni de `TaskActuator` en estas mediciones.
 
 ## Utilizacion observada
 
@@ -119,37 +125,37 @@ Maximos observados de ejecucion:
 
 | Tarea | C observado max us | Periodo considerado | Utilizacion |
 | --- | ---: | ---: | ---: |
-| `TaskSensors` | 3088 | 100000 us | 0.03088 |
+| `TaskSensors` | 3310 | 100000 us | 0.03310 |
 | `TaskDiagnostics` | No instrumentada como WCET critico | 500000 us | No calculada |
 
 Para las tareas event-driven no se aplica una utilizacion periodica directa sin asumir una tasa maxima de eventos. Como cota informativa, si se toma una activacion por muestra de sensor:
 
 | Tarea | C observado max us | Periodo hipotetico | Utilizacion informativa |
 | --- | ---: | ---: | ---: |
-| `TaskSafety` | 26367 | 100000 us | 0.26367 |
-| `TaskActuator` | 856 | 100000 us | 0.00856 |
+| `TaskSafety` | 2435 | 100000 us | 0.02435 |
+| `TaskActuator` | 1007 | 100000 us | 0.01007 |
 
 Con esa hipotesis, la suma informativa para la ruta critica seria:
 
 ```text
-U_total ~= (3088 + 26367 + 856) / 100000 = 0.30311
+U_total ~= (3310 + 2435 + 1007) / 100000 = 0.06752
 ```
 
-Este valor no es una prueba formal de planificabilidad RMS. El maximo de `TaskSafety` incluye salida Serial de instrumentacion durante la transicion critica, por lo que es una cota observada conservadora del prototipo instrumentado. Las prioridades no fueron asignadas estrictamente por periodo; fueron asignadas por criticidad funcional. Un analisis RMS solo seria valido bajo supuestos adicionales de tareas periodicas independientes, deadlines relativos iguales a periodos y prioridades monotonicamente asignadas por periodo.
+Este valor no es una prueba formal de planificabilidad RMS. Las prioridades no fueron asignadas estrictamente por periodo; fueron asignadas por criticidad funcional. Un analisis RMS solo seria valido bajo supuestos adicionales de tareas periodicas independientes, deadlines relativos iguales a periodos y prioridades monotonicamente asignadas por periodo.
 
 ## WCRT observado y analitico
 
 El maximo medido se reporta como WORT, no como WCRT formal:
 
 ```text
-WORT = 23123 us
+WORT = 22502 us
 ```
 
 No se presenta un WCRT analitico formal porque la ejecucion ocurre en Wokwi, sobre Arduino/FreeRTOS, con simulacion y sin una caracterizacion completa de interrupciones, tiempos de libreria, temporizacion del host ni modelo certificado del actuador.
 
 ## Movimiento fisico del servo
 
-La medicion termina en `T_ACTUATOR_RECEIVED`, cuando `TaskActuator` recibe y aplica el comando de cierre al servo simulado. No se midio `T_VALVE_CLOSED` como fin fisico del movimiento. Wokwi no proporciona en este montaje una senal independiente y fiable para certificar el fin de movimiento del servo.
+El requisito `RT-03` termina en `T_ACTUATOR_RECEIVED`, cuando `TaskActuator` recibe el comando de cierre. Adicionalmente se registra `T_ACTUATOR_APPLIED`, despues de escribir servo, buzzer y LEDs. No se midio `T_VALVE_CLOSED` como fin fisico del movimiento. Wokwi no proporciona en este montaje una senal independiente y fiable para certificar el fin de movimiento del servo.
 
 El servomotor simulado no representa tiempos reales de una electrovalvula certificada.
 

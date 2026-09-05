@@ -27,6 +27,7 @@ constexpr uint8_t RESET_DEBOUNCE_SAMPLES = 2;
 constexpr TickType_t SENSOR_PERIOD = pdMS_TO_TICKS(100);
 constexpr TickType_t DIAGNOSTICS_PERIOD = pdMS_TO_TICKS(500);
 constexpr TickType_t SAFETY_QUEUE_TIMEOUT = pdMS_TO_TICKS(50);
+constexpr uint32_t INITIAL_SENSOR_TIMEOUT_US = 350000;
 constexpr uint32_t SENSOR_DATA_TIMEOUT_US = 350000;
 constexpr TickType_t SENSOR_TEST_PERIOD = pdMS_TO_TICKS(500);
 constexpr TickType_t ACTUATOR_TEST_PERIOD = pdMS_TO_TICKS(750);

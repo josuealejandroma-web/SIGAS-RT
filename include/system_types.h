@@ -18,6 +18,7 @@ enum class RequestedAction : uint8_t {
 };
 
 enum class SystemState : uint8_t {
+  kStartup,
   kNormal,
   kWarning,
   kCritical,
@@ -71,6 +72,7 @@ struct ActuatorCommand {
   uint64_t commandTimestampUs;
   uint64_t firstHighTimestampUs;
   uint64_t criticalConfirmedTimestampUs;
+  uint64_t actuatorReceivedTimestampUs;
   uint32_t sequence;
 };
 

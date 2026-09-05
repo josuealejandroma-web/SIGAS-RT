@@ -1,25 +1,67 @@
 # SIGAS-RT
 
-Sistema Inteligente de Detección y Corte Automático de Gas en Tiempo Real.
+Sistema Inteligente de Deteccion y Corte Automatico de Gas en Tiempo Real.
 
 Proyecto académico de Sistemas de Tiempo Real Crítico.
 
 ## Arquitectura principal
 
-Sensor → ADC → CPU → Procesamiento en Tiempo Real → Actuador
+```text
+Sensor -> ADC -> CPU -> Procesamiento en Tiempo Real -> Actuador
+```
 
-## Tecnologías previstas
+## Tecnologias
 
 - ESP32
 - C/C++
 - FreeRTOS
 - PlatformIO
 - Wokwi
-- Wokwi MCP
-- Git
-- GitHub
-- Codex
+- Wokwi CLI/MCP
+- Godot 4 para gemelo digital local auxiliar
+- Python 3 para bridge local de telemetria
 
 ## Estado del proyecto
 
-Actualmente en fase de preparación del entorno de desarrollo.
+El nucleo embebido ya implementa adquisicion ADC simulada, procesamiento de seguridad en FreeRTOS, enclavamiento fail-safe, rearme manual condicionado, timeout de sensores y medicion temporal. La visualizacion Godot se mantiene como herramienta auxiliar: no contiene la logica critica ni controla actuadores reales.
+
+## Validacion actual
+
+El criterio temporal principal (`RT-03`) se mide desde `T_CRITICAL_CONFIRMED` hasta `T_ACTUATOR_RECEIVED`.
+
+| Metrica | Resultado |
+| --- | ---: |
+| Deadline experimental | 500000 us |
+| Worst Observed Response Time | 22502 us |
+| Margen observado | 477498 us |
+| Corridas temporales | 25 |
+| Fallas de deadline | 0 |
+
+La evidencia esta documentada en:
+
+- `docs/analisis_temporal.md`
+- `docs/resultados_temporales.md`
+- `docs/matriz_trazabilidad.md`
+- `simulation/results/`
+
+## Ejecucion local
+
+Compilar firmware normal:
+
+```powershell
+.\.venv\Scripts\platformio run -e esp32doit-devkit-v1
+```
+
+Ejecutar mediciones temporales:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File simulation\run_timing_measurements.ps1 -Runs 20 -LoadRuns 5 -TimeoutMs 30000
+```
+
+El token de Wokwi debe estar en la variable de entorno de usuario o de proceso `WOKWI_CLI_TOKEN`. No se almacena en el repositorio.
+
+## Limitaciones
+
+- Wokwi no certifica comportamiento hard real-time ni tiempos fisicos de actuadores.
+- Los umbrales ADC son experimentales de simulacion, no ppm certificados.
+- El gemelo digital es observabilidad y demostracion local; la funcion critica permanece en ESP32/FreeRTOS.

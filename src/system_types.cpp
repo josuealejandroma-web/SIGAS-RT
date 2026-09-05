@@ -28,6 +28,8 @@ const char *toString(RequestedAction action) {
 
 const char *toString(SystemState state) {
   switch (state) {
+    case SystemState::kStartup:
+      return "SYSTEM_STARTUP";
     case SystemState::kNormal:
       return "SYSTEM_NORMAL";
     case SystemState::kWarning:

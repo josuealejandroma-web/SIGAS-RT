@@ -15,6 +15,7 @@ simulation/*.bin
 # Logs
 *.log
 simulation/*.log
+visualization/**/*.log
 
 # Python
 __pycache__/
@@ -27,6 +28,18 @@ __pycache__/
 
 # Herramientas locales descargadas
 tools/
+
+# Godot
+.godot/
+visualization/godot/.godot/
+visualization/godot/imported/
+visualization/godot/export_presets.cfg
+
+# Artefactos de build/export
+dist/
+build/
+visualization/dist/
+visualization/build/
 
 # Sistema
 Thumbs.db

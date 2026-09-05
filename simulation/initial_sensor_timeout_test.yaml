@@ -1,4 +1,4 @@
-name: "SIGAS-RT CL-10 sensor data timeout test"
+name: "SIGAS-RT initial sensor timeout test"
 version: 1
 author: "SIGAS-RT"
 steps:

@@ -75,6 +75,13 @@ function Convert-TimingLine {
     $fields[$match.Groups[1].Value.ToLowerInvariant()] = $match.Groups[2].Value
   }
 
+  if ($fields.Contains("post_confirmation_received_us")) {
+    $fields["post_confirmation_us"] = $fields["post_confirmation_received_us"]
+  }
+  if ($fields.Contains("end_to_end_received_us")) {
+    $fields["end_to_end_us"] = $fields["end_to_end_received_us"]
+  }
+
   [pscustomobject]$fields
 }
 
@@ -235,7 +242,16 @@ $wcetRows | Export-Csv -NoTypeInformation -Path $wcetCsv
 
 $summaryRows = New-Object System.Collections.Generic.List[object]
 foreach ($kind in @("normal", "diagnostic_load")) {
-  foreach ($metric in @("confirmation_us", "post_confirmation_us", "end_to_end_us")) {
+  foreach ($metric in @(
+      "confirmation_us",
+      "command_latency_us",
+      "dispatch_latency_us",
+      "actuator_apply_us",
+      "post_confirmation_received_us",
+      "post_confirmation_applied_us",
+      "end_to_end_received_us",
+      "end_to_end_applied_us"
+    )) {
     $stats = Get-Stats -Rows $timingRows -RunKind $kind -Metric $metric
     if ($stats) {
       $summaryRows.Add($stats)

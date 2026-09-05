@@ -10,6 +10,7 @@ struct ActuatorTaskContext {
 };
 
 void configureActuatorOutputs();
+void applyBootSafeActuatorState(bool alarmOn);
 void taskActuator(void *parameters);
 
 }  // namespace sigas

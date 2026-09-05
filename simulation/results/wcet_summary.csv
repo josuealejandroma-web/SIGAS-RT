@@ -1,4 +1,4 @@
 "task","samples","max_us","average_us"
-"TaskActuator","30","856","528.6"
-"TaskSafety","60","26367","2706.63"
-"TaskSensors","58","3088","2636.5"
+"TaskActuator","25","1007","999.52"
+"TaskSafety","50","2435","2105.6"
+"TaskSensors","50","3310","2963.04"

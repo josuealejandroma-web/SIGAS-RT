@@ -26,6 +26,11 @@ void taskSensors(void *parameters) {
   Serial.println("[TASK][TaskSensors] CREATED PERIOD_MS=100");
 
   for (;;) {
+#ifdef SIGAS_RT_INITIAL_SENSOR_TIMEOUT_TEST
+    vTaskDelayUntil(&lastWake, SENSOR_PERIOD);
+    continue;
+#endif
+
 #ifdef SIGAS_RT_SENSOR_TIMEOUT_TEST
     if (timeoutStimulusActive) {
       vTaskDelayUntil(&lastWake, SENSOR_PERIOD);

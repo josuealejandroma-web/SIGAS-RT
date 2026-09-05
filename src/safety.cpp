@@ -9,7 +9,7 @@ namespace sigas {
 namespace {
 
 struct SafetyRuntime {
-  SystemState state = SystemState::kNormal;
+  SystemState state = SystemState::kStartup;
   ZoneLevel zone1Level = ZoneLevel::kNormal;
   ZoneLevel zone2Level = ZoneLevel::kNormal;
   uint8_t highCountZone1 = 0;
@@ -22,6 +22,7 @@ struct SafetyRuntime {
   uint64_t criticalConfirmedTimestampUs = 0;
   uint64_t commandSentTimestampUs = 0;
   uint64_t lastSampleTimestampUs = 0;
+  uint64_t taskStartTimestampUs = 0;
 };
 
 bool isSafeAdc(uint16_t adcRaw) {
@@ -73,7 +74,8 @@ bool criticalConfirmed(const SafetyRuntime &runtime) {
 }
 
 RequestedAction actionForState(SystemState state) {
-  if (state == SystemState::kCritical || state == SystemState::kSafeLatched ||
+  if (state == SystemState::kStartup || state == SystemState::kCritical ||
+      state == SystemState::kSafeLatched ||
       state == SystemState::kFault) {
     return RequestedAction::kSafeClose;
   }
@@ -95,6 +97,7 @@ ActuatorCommand buildActuatorCommand(const SafetyDecision &decision) {
                            decision.commandSentTimestampUs,
                            decision.firstHighTimestampUs,
                            decision.criticalConfirmedTimestampUs,
+                           0,
                            decision.sequence};
   }
 
@@ -107,6 +110,7 @@ ActuatorCommand buildActuatorCommand(const SafetyDecision &decision) {
                            decision.commandSentTimestampUs,
                            decision.firstHighTimestampUs,
                            decision.criticalConfirmedTimestampUs,
+                           0,
                            decision.sequence};
   }
 
@@ -118,6 +122,7 @@ ActuatorCommand buildActuatorCommand(const SafetyDecision &decision) {
                          decision.commandSentTimestampUs,
                          decision.firstHighTimestampUs,
                          decision.criticalConfirmedTimestampUs,
+                         0,
                          decision.sequence};
 }
 
@@ -130,18 +135,31 @@ void logStateTransition(SystemState from, SystemState to,
 }
 
 void publishDecision(SafetyTaskContext *context, const SensorSample &sample,
-                     const SafetyRuntime &runtime, TransitionReason reason) {
+                     SafetyRuntime &runtime, TransitionReason reason) {
+  const RequestedAction action = actionForState(runtime.state);
+  const uint64_t commandSentUs = static_cast<uint64_t>(esp_timer_get_time());
+  if (action == RequestedAction::kSafeClose &&
+      runtime.criticalConfirmedTimestampUs > 0 &&
+      runtime.commandSentTimestampUs == 0) {
+    runtime.commandSentTimestampUs = commandSentUs;
+    Serial.printf("[SAFETY] T_COMMAND_SENT=%llu\r\n",
+                  static_cast<unsigned long long>(
+                      runtime.commandSentTimestampUs));
+  }
+
   SafetyDecision decision{
       runtime.state,
       runtime.zone1Level,
       runtime.zone2Level,
-      actionForState(runtime.state),
+      action,
       reason,
       sample.timestampUs,
       static_cast<uint64_t>(esp_timer_get_time()),
       runtime.firstHighTimestampUs,
       runtime.criticalConfirmedTimestampUs,
-      runtime.commandSentTimestampUs,
+      action == RequestedAction::kSafeClose && runtime.commandSentTimestampUs > 0
+          ? runtime.commandSentTimestampUs
+          : commandSentUs,
       sample.sequence,
   };
 
@@ -155,7 +173,6 @@ void enterCriticalThenLatch(SafetyRuntime &runtime, TransitionReason &reason) {
   runtime.state = SystemState::kCritical;
   runtime.criticalConfirmedTimestampUs =
       static_cast<uint64_t>(esp_timer_get_time());
-  runtime.commandSentTimestampUs = runtime.criticalConfirmedTimestampUs;
   reason = TransitionReason::kCriticalConfirmed;
 
   Serial.printf("[SAFETY] HIGH confirmed z1=%u/%u z2=%u/%u\r\n",
@@ -164,8 +181,6 @@ void enterCriticalThenLatch(SafetyRuntime &runtime, TransitionReason &reason) {
   Serial.printf("[SAFETY] T_CRITICAL_CONFIRMED=%llu\r\n",
                 static_cast<unsigned long long>(
                     runtime.criticalConfirmedTimestampUs));
-  Serial.printf("[SAFETY] T_COMMAND_SENT=%llu\r\n",
-                static_cast<unsigned long long>(runtime.commandSentTimestampUs));
   Serial.println("[SAFETY] SAFE_CLOSE requested");
   logStateTransition(previous, runtime.state, reason);
 
@@ -241,6 +256,18 @@ void updateStateFromSample(SafetyRuntime &runtime, const SensorSample &sample,
     return;
   }
 
+  if (runtime.state == SystemState::kStartup) {
+    if (runtime.safeSamples >= SAFE_RESET_CONFIRMATION_SAMPLES) {
+      const SystemState previous = runtime.state;
+      runtime.state = SystemState::kNormal;
+      reason = TransitionReason::kStableNormal;
+      logStateTransition(previous, runtime.state, reason);
+    } else {
+      reason = TransitionReason::kBoot;
+    }
+    return;
+  }
+
   const bool elevated = runtime.zone1Level != ZoneLevel::kNormal ||
                         runtime.zone2Level != ZoneLevel::kNormal;
   const SystemState previous = runtime.state;
@@ -259,13 +286,16 @@ void updateStateFromSample(SafetyRuntime &runtime, const SensorSample &sample,
 
 void handleSensorTimeout(SafetyTaskContext *context, SafetyRuntime &runtime,
                          uint32_t sequence) {
-  if (runtime.state == SystemState::kFault ||
-      runtime.lastSampleTimestampUs == 0) {
+  if (runtime.state == SystemState::kFault) {
     return;
   }
 
   const uint64_t nowUs = static_cast<uint64_t>(esp_timer_get_time());
-  if (nowUs - runtime.lastSampleTimestampUs < SENSOR_DATA_TIMEOUT_US) {
+  if (runtime.lastSampleTimestampUs == 0) {
+    if (nowUs - runtime.taskStartTimestampUs < INITIAL_SENSOR_TIMEOUT_US) {
+      return;
+    }
+  } else if (nowUs - runtime.lastSampleTimestampUs < SENSOR_DATA_TIMEOUT_US) {
     return;
   }
 
@@ -287,6 +317,7 @@ void taskSafety(void *parameters) {
   SensorSample sample{};
   SafetyRuntime runtime{};
   uint64_t maxObservedExecutionUs = 0;
+  runtime.taskStartTimestampUs = static_cast<uint64_t>(esp_timer_get_time());
 
   Serial.println("[TASK][TaskSafety] CREATED");
 

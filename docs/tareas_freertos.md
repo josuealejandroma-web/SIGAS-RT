@@ -106,12 +106,13 @@ Variables logicas:
 | `T_CRITICAL_CONFIRMED` | Timestamp monotono en microsegundos al confirmar condicion critica. |
 | `T_COMMAND_SENT` | Timestamp monotono en microsegundos al publicar orden de cierre a `TaskActuator`. |
 | `T_ACTUATOR_RECEIVED` | Timestamp monotono en microsegundos al recibir el comando en `TaskActuator`. |
-| `ResponseTimeSoftware` | `T_COMMAND_SENT - T_CRITICAL_CONFIRMED`. |
+| `T_ACTUATOR_APPLIED` | Timestamp monotono despues de escribir salidas de actuacion. |
+| `ResponseTimeSoftware` | `T_ACTUATOR_RECEIVED - T_CRITICAL_CONFIRMED`. |
 | `ResponseTimeActuatorQueue` | `T_ACTUATOR_RECEIVED - T_COMMAND_SENT`. |
 
 No se debe mezclar la orden al actuador con el movimiento fisico completo del actuador. En simulacion, el servo representa una valvula academica, no una valvula certificada.
 
-El analisis temporal final del prototipo simulado esta documentado en `docs/analisis_temporal.md`. El maximo observado para `T_ACTUATOR_RECEIVED - T_CRITICAL_CONFIRMED` fue 23123 us frente a un deadline de 500000 us.
+El analisis temporal final del prototipo simulado esta documentado en `docs/analisis_temporal.md`. El maximo observado para `T_ACTUATOR_RECEIVED - T_CRITICAL_CONFIRMED` fue 22502 us frente a un deadline de 500000 us.
 
 ## Reglas de implementacion
 

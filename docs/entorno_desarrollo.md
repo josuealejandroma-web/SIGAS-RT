@@ -492,7 +492,7 @@ codex mcp add Wokwi -- "C:\Users\josue\Proyectos\SIGAS-RT\tools\wokwi-cli.exe" m
 Para que Wokwi CLI/MCP sigan funcionando tras abrir una terminal nueva o reiniciar Codex, persistir el token real como variable de entorno de usuario. No guardar el token en archivos del repositorio:
 
 ```powershell
-setx WOKWI_CLI_TOKEN "wok_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+[Environment]::SetEnvironmentVariable("WOKWI_CLI_TOKEN", "<TOKEN_REAL>", "User")
 ```
 
 Despues abrir una terminal nueva y ejecutar:

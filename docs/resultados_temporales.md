@@ -10,20 +10,22 @@
 | Deadline RT-03 | 500000 us |
 | PASS | 25 |
 | FAIL | 0 |
-| Worst Observed Response Time | 23123 us |
-| Margen temporal | 476877 us |
-| Margen porcentual | 95.38 % |
+| Worst Observed Response Time | 22502 us |
+| Margen temporal | 477498 us |
+| Margen porcentual | 95.50 % |
 
 ## Estadisticas
 
 | Grupo | Metrica | Min us | Promedio us | Max us |
 | --- | --- | ---: | ---: | ---: |
-| Normal | `confirmation_time_us` | 200049 | 200051.1 | 200052 |
-| Normal | `post_confirmation_response_us` | 23122 | 23122.7 | 23123 |
-| Normal | `end_to_end_us` | 223172 | 223173.8 | 223175 |
-| Diagnostico con carga | `confirmation_time_us` | 200051 | 200051.6 | 200052 |
-| Diagnostico con carga | `post_confirmation_response_us` | 23122 | 23122.6 | 23123 |
-| Diagnostico con carga | `end_to_end_us` | 223174 | 223174.2 | 223175 |
+| Normal | `confirmation_time_us` | 200050 | 200051.4 | 200052 |
+| Normal | `post_confirmation_received_us` | 22342 | 22441.9 | 22502 |
+| Normal | `post_confirmation_applied_us` | 22878 | 22960.25 | 23019 |
+| Normal | `end_to_end_received_us` | 222392 | 222493.3 | 222554 |
+| Diagnostico con carga | `confirmation_time_us` | 200052 | 200052 | 200052 |
+| Diagnostico con carga | `post_confirmation_received_us` | 22413 | 22466.6 | 22502 |
+| Diagnostico con carga | `post_confirmation_applied_us` | 22931 | 22983.8 | 23019 |
+| Diagnostico con carga | `end_to_end_received_us` | 222465 | 222518.6 | 222554 |
 
 ## Resultados TT
 
@@ -41,7 +43,7 @@
 El peor tiempo observado para `RT-03` fue:
 
 ```text
-T_ACTUATOR_RECEIVED - T_CRITICAL_CONFIRMED = 23123 us
+T_ACTUATOR_RECEIVED - T_CRITICAL_CONFIRMED = 22502 us
 ```
 
 No se denomina WCRT formal. El termino usado para el maximo medido es Worst Observed Response Time.

@@ -6,10 +6,10 @@
 | --- | --- | --- | --- |
 | RT-01 | TT-01 a TT-06 | `TaskSensors` periodica con `vTaskDelayUntil()` y `SENSOR_PERIOD=100 ms`. | PASS |
 | RT-02 | Revision de codigo | `src/sensors.cpp` y `src/diagnostics.cpp` usan `vTaskDelayUntil()`. | PASS |
-| RT-03 | TT-01 a TT-06 | `post_confirmation_response_us <= 500000`; WORT observado 23123 us. | PASS |
+| RT-03 | TT-01 a TT-06 | `post_confirmation_received_us <= 500000`; WORT observado 22502 us. | PASS |
 | RT-04 | Revision de codigo | `TaskSafety` prioridad 4, superior a `TaskDiagnostics` prioridad 1. | PASS |
 | RT-05 | Revision de codigo | `TaskActuator` prioridad 5, maxima del sistema. | PASS |
-| RT-06 | TT-04 | Carga controlada en `TaskDiagnostics`; peor respuesta 23123 us. | PASS |
+| RT-06 | TT-04 | Carga controlada en `TaskDiagnostics`; peor respuesta `post_confirmation_received_us` 22502 us. | PASS |
 | RT-07 | TT-01 a TT-06 | CSV separa confirmation, command, dispatch, post-confirmation y end-to-end. | PASS |
 
 ## Seguridad funcional simulada
@@ -21,6 +21,8 @@
 | RF-11 / RS-03 | CL-06 | `SYSTEM_SAFE_LATCHED` mantiene cierre. | PASS |
 | RF-13 | CL-07, CL-08 | Reset rechazado inseguro y aceptado seguro. | PASS |
 | RS-09 | CL-10 | Timeout de sensor lleva a `SYSTEM_FAULT` y `SAFE_CLOSE`. | PASS |
+| RS-10 | IT-01, CL-11 | Arranque en `SYSTEM_STARTUP` con valvula cerrada hasta confirmar muestras seguras. | PASS |
+| RS-11 | CL-11 | Ausencia de primera muestra lleva a `SYSTEM_FAULT` y `SAFE_CLOSE`. | PASS |
 
 ## Escenarios temporales
 

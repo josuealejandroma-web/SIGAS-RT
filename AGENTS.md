@@ -70,9 +70,22 @@ lib/
 test/
 docs/
 simulation/
+visualization/
 
 ## Objetivo actual
 
-Preparar y mantener el entorno de desarrollo.
+Preparar, validar y documentar el entorno de desarrollo, la simulacion Wokwi y el gemelo digital local.
 
-No comenzar todavía la implementación del detector de gas.
+El directorio `visualization/` es auxiliar. No debe contener logica critica de seguridad ni reemplazar la ruta embebida:
+
+Sensor
+↓
+ADC
+↓
+CPU
+↓
+Procesamiento tiempo real
+↓
+Actuador
+
+La visualizacion puede leer telemetria y ejecutar escenarios locales permitidos, pero no debe enviar comandos directos a actuadores criticos ni depender de Internet, bases de datos, servidores externos o servicios cloud.

@@ -20,7 +20,7 @@ Los umbrales definidos para Wokwi son umbrales experimentales de simulacion. No 
 | RF-12 | El sistema no debe reabrir automaticamente la valvula cuando el valor ADC vuelva a normal. |
 | RF-13 | El sistema debe permitir rearme manual mediante boton solo cuando ambas zonas esten por debajo del umbral seguro experimental. |
 | RF-14 | El sistema debe soportar fuga en Zona 1, Zona 2 y fuga simultanea. |
-| RF-15 | El sistema debe registrar timestamps monotonicos para primera muestra alta, confirmacion critica, comando enviado y recepcion por actuador. |
+| RF-15 | El sistema debe registrar timestamps monotonicos para primera muestra alta, confirmacion critica, comando enviado, recepcion por actuador y salidas aplicadas. |
 
 ## Requisitos de tiempo real
 
@@ -49,6 +49,8 @@ Nota: antes del bloque de analisis temporal, `RT-03` estaba formulado hasta la e
 | RS-07 | Ningun secreto, token o credencial debe almacenarse en el repositorio. |
 | RS-08 | El sistema debe adoptar filosofia fail-safe ante una condicion critica confirmada. |
 | RS-09 | Ante perdida de datos de sensor despues de una muestra valida, el sistema debe pasar a falla y ordenar cierre seguro. |
+| RS-10 | Durante arranque, antes de confirmar muestras seguras, la valvula simulada debe permanecer cerrada y el sistema debe operar en estado seguro. |
+| RS-11 | Ante ausencia de la primera muestra de sensor, el sistema debe pasar a falla y ordenar cierre seguro. |
 
 ## Requisitos de hardware
 
@@ -68,9 +70,11 @@ Nota: antes del bloque de analisis temporal, `RT-03` estaba formulado hasta la e
 | RSim-01 | El proyecto debe compilar con PlatformIO sin errores. |
 | RSim-02 | Wokwi debe iniciar correctamente con `simulation/wokwi.toml`. |
 | RSim-03 | Las pruebas deben ejecutarse con Wokwi CLI/MCP sin imprimir `WOKWI_CLI_TOKEN`. |
-| RSim-04 | Deben existir escenarios P01 a P08 para validar estados, fugas, falso positivo, deadline y rearme. |
+| RSim-04 | Deben existir escenarios HW, IT, CL y TT para validar hardware simulado, integracion FreeRTOS, fugas, falso positivo, deadline, timeout, arranque seguro y rearme. |
 | RSim-05 | Los resultados reales de simulacion deben documentarse en `docs/resultados_simulacion.md`. |
 | RSim-06 | La matriz de trazabilidad debe relacionar requisitos, componentes, codigo, pruebas y resultados. |
+| RSim-07 | La visualizacion Godot debe consumir telemetria local sin modificar la logica critica de seguridad. |
+| RSim-08 | El bridge de visualizacion debe rechazar comandos directos de actuador y solo permitir escenarios de prueba definidos. |
 
 ## Restricciones
 

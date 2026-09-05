@@ -23,6 +23,7 @@ ActuatorTaskContext actuatorContext{};
 DiagnosticsTaskContext diagnosticsContext{};
 
 void failBoot(const char *message) {
+  applyBootSafeActuatorState(true);
   Serial.printf("[BOOT][ERROR] %s\r\n", message);
   for (;;) {
     vTaskDelay(pdMS_TO_TICKS(1000));
