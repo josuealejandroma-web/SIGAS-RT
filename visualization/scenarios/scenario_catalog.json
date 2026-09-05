@@ -3,7 +3,7 @@
   "commands": {
     "RUN_SAFE": {
       "label": "Seguro",
-      "scenario": "hardware_smoke_test.yaml",
+      "scenario": "visual_safe_test.yaml",
       "description": "Arranque, sensores normales y salidas seguras.",
       "visual_id": "safe_startup"
     },

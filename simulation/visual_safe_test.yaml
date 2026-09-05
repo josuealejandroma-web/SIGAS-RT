@@ -1,0 +1,22 @@
+name: "SIGAS-RT visual safe telemetry test"
+version: 1
+author: "SIGAS-RT"
+steps:
+  - set-control:
+      part-id: resetBtn
+      control: pressed
+      value: 0
+  - set-control:
+      part-id: adcStimZ1
+      control: position
+      value: 0.1
+  - set-control:
+      part-id: adcStimZ2
+      control: position
+      value: 0.1
+  - wait-serial: "[BOOT][SIGAS-RT] FreeRTOS integration mode iniciado"
+  - wait-serial: "@SIGAS"
+  - wait-serial: "\"state\":\"SYSTEM_STARTUP\""
+  - wait-serial: "\"valve\":\"CLOSED\""
+  - wait-serial: "\"state\":\"SYSTEM_NORMAL\""
+  - wait-serial: "\"valve\":\"OPEN\""
