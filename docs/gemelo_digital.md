@@ -21,6 +21,12 @@ Sensor -> ADC -> CPU -> Procesamiento tiempo real -> Actuador
 | Catalogo | `visualization/scenarios/` | Lista de comandos y metadatos visuales. |
 | Firmware | `src/diagnostics.cpp` | Emision opcional `@SIGAS` bajo `SIGAS_RT_VISUALIZATION`. |
 
+## Modelo visual
+
+El modelo Blender representa una vivienda seccionada de dos pisos con fachada, cubierta, mobiliario interior, cocina, area tecnica y gabinete de control. El sistema SIGAS-RT se mantiene visible como instalacion fisica: entrada de gas, medidor, valvula manual, valvula automatica, tuberias, soportes, sensores MQ-2, ESP32, LEDs, buzzer y puntos de fuga conceptuales.
+
+El pulido visual solo mejora legibilidad espacial, materiales, iluminacion y camaras. No modifica umbrales, tiempos, escenarios Wokwi ni comportamiento critico del firmware.
+
 ## Protocolo
 
 El firmware de visualizacion emite lineas:

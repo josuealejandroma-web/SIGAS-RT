@@ -49,6 +49,17 @@ La camara orbital soporta:
 
 La vista tecnica oculta paredes y techo importados para exponer tuberias, sensores, medidor, valvulas, ESP32 y flujo fisico.
 
+## Lectura fisica
+
+La casa importada desde Blender incluye referencias visuales para ubicar el sistema en contexto:
+
+- fachada, cubierta, balcon, buhardillas, ventanas y jardineras;
+- cocina, sala, comedor, dormitorios, bano y area tecnica con mobiliario de escala;
+- medidor exterior, valvula manual, valvula automatica, actuador, tuberias, abrazaderas y flechas de flujo;
+- sensores MQ-2 con rejilla, gabinete de control, ESP32, antena, borneras, LEDs y buzzer.
+
+Estos elementos son geometria de soporte para observabilidad. La logica de seguridad permanece en firmware y la visualizacion solo refleja estados recibidos.
+
 ## Estados visuales
 
 | Estado | Representacion |
