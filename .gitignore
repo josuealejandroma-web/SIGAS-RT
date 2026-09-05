@@ -40,6 +40,8 @@ dist/
 build/
 visualization/dist/
 visualization/build/
+visualization/blender/exports/preview_*.png
+visualization/blender/source/*.blend1
 
 # Sistema
 Thumbs.db
