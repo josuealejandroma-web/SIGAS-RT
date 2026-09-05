@@ -1,6 +1,9 @@
 extends CanvasLayer
 
 signal scenario_requested(command: String)
+signal view_requested(view_name: String)
+
+const GraphPanelScene := preload("res://scripts/GraphPanel.gd")
 
 var labels := {}
 var graph: Control
@@ -33,7 +36,7 @@ func _ready() -> void:
 		box.add_child(label)
 		labels[key] = label
 
-	graph = GraphPanel.new()
+	graph = GraphPanelScene.new()
 	graph.custom_minimum_size = Vector2(328, 72)
 	box.add_child(graph)
 
@@ -44,11 +47,26 @@ func _ready() -> void:
 	box.add_child(buttons)
 
 	_add_button(buttons, "Seguro", "RUN_SAFE")
-	_add_button(buttons, "Zona 1", "RUN_ZONE1_LEAK")
-	_add_button(buttons, "Zona 2", "RUN_ZONE2_LEAK")
+	_add_button(buttons, "Normal", "RUN_NORMAL")
+	_add_button(buttons, "Fuga Cocina", "FUGA COCINA")
+	_add_button(buttons, "Fuga Calefon", "FUGA CALEFON")
 	_add_button(buttons, "Doble", "RUN_BOTH_LEAK")
-	_add_button(buttons, "Pico", "RUN_FALSE_POSITIVE")
-	_add_button(buttons, "Timeout", "RUN_SENSOR_TIMEOUT")
+	_add_button(buttons, "Pico Aislado", "PICO AISLADO")
+	_add_button(buttons, "Falla Sensor", "FALLA SENSOR")
+	_add_button(buttons, "Full Demo", "FULL DEMO")
+
+	var views := GridContainer.new()
+	views.columns = 3
+	views.add_theme_constant_override("h_separation", 6)
+	views.add_theme_constant_override("v_separation", 6)
+	box.add_child(views)
+
+	_add_view_button(views, "Exterior", "exterior")
+	_add_view_button(views, "PB", "ground")
+	_add_view_button(views, "PA", "upper")
+	_add_view_button(views, "Cocina", "kitchen")
+	_add_view_button(views, "Tecnica", "technical")
+	_add_view_button(views, "Control", "control")
 
 
 func apply_telemetry(frame: Dictionary) -> void:
@@ -81,4 +99,12 @@ func _add_button(parent: Control, text: String, command: String) -> void:
 	button.text = text
 	button.custom_minimum_size = Vector2(150, 32)
 	button.pressed.connect(func() -> void: scenario_requested.emit(command))
+	parent.add_child(button)
+
+
+func _add_view_button(parent: Control, text: String, view_name: String) -> void:
+	var button := Button.new()
+	button.text = text
+	button.custom_minimum_size = Vector2(98, 30)
+	button.pressed.connect(func() -> void: view_requested.emit(view_name))
 	parent.add_child(button)

@@ -1,6 +1,7 @@
 extends Node3D
 
 @onready var twin: Node3D = $DigitalTwin
+@onready var camera_rig: Node3D = $CameraRig
 @onready var hud: CanvasLayer = $Hud
 
 const TELEMETRY_PORT := 45701
@@ -75,6 +76,7 @@ var demo_frames := [
 
 func _ready() -> void:
 	hud.scenario_requested.connect(_on_scenario_requested)
+	hud.view_requested.connect(_on_view_requested)
 	var bind_result := telemetry.bind(TELEMETRY_PORT, "127.0.0.1")
 	if bind_result == OK:
 		hud.show_bridge_status("escuchando UDP " + str(TELEMETRY_PORT))
@@ -107,6 +109,13 @@ func _apply_frame(frame: Dictionary) -> void:
 func _on_scenario_requested(command: String) -> void:
 	command_peer.put_packet(command.to_utf8_buffer())
 	hud.show_bridge_status("comando enviado: " + command)
+
+
+func _on_view_requested(view_name: String) -> void:
+	if twin.has_method("set_technical_view"):
+		twin.set_technical_view(view_name == "technical")
+	if camera_rig.has_method("set_view"):
+		camera_rig.set_view(view_name, twin)
 
 
 func _poll_telemetry() -> void:

@@ -14,6 +14,7 @@ La visualizacion no decide estados de seguridad, no envia comandos directos de a
 
 | Ruta | Proposito |
 | --- | --- |
+| `blender/` | Fuente reproducible Blender de casa, sistema de gas, sensores y componentes SIGAS-RT. |
 | `godot/` | Proyecto Godot 4 del gemelo digital 3D. |
 | `bridge/` | Bridge local Python entre Wokwi CLI y Godot. |
 | `scenarios/` | Catalogo de escenarios visuales permitidos. |
