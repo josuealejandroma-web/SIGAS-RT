@@ -3,8 +3,15 @@ extends Node3D
 @onready var twin: Node3D = $DigitalTwin
 @onready var hud: CanvasLayer = $Hud
 
+const TELEMETRY_PORT := 45701
+const COMMAND_HOST := "127.0.0.1"
+const COMMAND_PORT := 45702
+
 var demo_time := 0.0
 var demo_index := 0
+var telemetry := PacketPeerUDP.new()
+var command_peer := PacketPeerUDP.new()
+var bridge_connected := false
 
 var demo_frames := [
 	{
@@ -68,10 +75,19 @@ var demo_frames := [
 
 func _ready() -> void:
 	hud.scenario_requested.connect(_on_scenario_requested)
+	var bind_result := telemetry.bind(TELEMETRY_PORT, "127.0.0.1")
+	if bind_result == OK:
+		hud.show_bridge_status("escuchando UDP " + str(TELEMETRY_PORT))
+	else:
+		hud.show_bridge_status("no se pudo abrir UDP " + str(TELEMETRY_PORT))
+	command_peer.connect_to_host(COMMAND_HOST, COMMAND_PORT)
 	_apply_frame(demo_frames[0])
 
 
 func _process(delta: float) -> void:
+	_poll_telemetry()
+	if bridge_connected:
+		return
 	demo_time += delta
 	if demo_time >= 2.0:
 		demo_time = 0.0
@@ -89,4 +105,16 @@ func _apply_frame(frame: Dictionary) -> void:
 
 
 func _on_scenario_requested(command: String) -> void:
-	hud.show_bridge_status("Bridge no conectado: " + command)
+	command_peer.put_packet(command.to_utf8_buffer())
+	hud.show_bridge_status("comando enviado: " + command)
+
+
+func _poll_telemetry() -> void:
+	while telemetry.get_available_packet_count() > 0:
+		var packet := telemetry.get_packet()
+		var text := packet.get_string_from_utf8()
+		var parsed = JSON.parse_string(text)
+		if typeof(parsed) == TYPE_DICTIONARY:
+			bridge_connected = true
+			_apply_frame(parsed)
+			hud.show_bridge_status("telemetria activa")
