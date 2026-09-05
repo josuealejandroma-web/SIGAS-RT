@@ -2,6 +2,15 @@
   "version": 1,
   "scenarios": [
     {
+      "id": "normal",
+      "command": "RUN_NORMAL",
+      "title": "Operacion normal",
+      "camera_focus": "wide",
+      "zones": [],
+      "expected_states": ["SYSTEM_STARTUP", "SYSTEM_NORMAL"],
+      "expected_result": "PASS"
+    },
+    {
       "id": "safe_startup",
       "command": "RUN_SAFE",
       "title": "Arranque seguro",
@@ -62,6 +71,15 @@
       "camera_focus": "controller",
       "zones": [],
       "expected_states": ["SYSTEM_STARTUP", "SYSTEM_FAULT"],
+      "expected_result": "PASS"
+    },
+    {
+      "id": "full_demo",
+      "command": "FULL_DEMO",
+      "title": "Full demo",
+      "camera_focus": "wide",
+      "zones": ["Z1", "Z2"],
+      "expected_states": ["SYSTEM_NORMAL", "SYSTEM_WARNING", "SYSTEM_CRITICAL", "SYSTEM_SAFE_LATCHED", "SYSTEM_NORMAL"],
       "expected_result": "PASS"
     }
   ]

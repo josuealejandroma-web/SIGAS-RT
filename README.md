@@ -32,8 +32,8 @@ El criterio temporal principal (`RT-03`) se mide desde `T_CRITICAL_CONFIRMED` ha
 | Metrica | Resultado |
 | --- | ---: |
 | Deadline experimental | 500000 us |
-| Worst Observed Response Time | 22502 us |
-| Margen observado | 477498 us |
+| Worst Observed Response Time | 22504 us |
+| Margen observado | 477496 us |
 | Corridas temporales | 25 |
 | Fallas de deadline | 0 |
 
@@ -86,7 +86,7 @@ Abrir el gemelo digital y bridge local:
 powershell -ExecutionPolicy Bypass -File scripts\run_digital_twin.ps1
 ```
 
-Si `godot` no esta en `PATH`, el script deja claro que debe instalarse Godot 4 o ejecutarse manualmente el proyecto `visualization\godot`.
+El script usa primero `tools\godot\godot.cmd` si existe; si no, busca `godot` en `PATH`. Si Godot no esta disponible, deja claro que debe instalarse Godot 4 o abrirse manualmente el proyecto `visualization\godot`.
 
 ## Verificacion
 
@@ -96,7 +96,7 @@ Verificacion local amplia:
 powershell -ExecutionPolicy Bypass -File scripts\verify_all.ps1
 ```
 
-La validacion Wokwi requiere `WOKWI_CLI_TOKEN` en el entorno. La validacion headless de Godot requiere `godot` en `PATH`; si no esta disponible, el script lo informa sin almacenar credenciales.
+La validacion Wokwi requiere `WOKWI_CLI_TOKEN` en el entorno. La validacion headless de Godot usa `tools\godot\godot.cmd` o `godot` en `PATH`; no almacena credenciales.
 
 ## Limitaciones
 

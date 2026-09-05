@@ -19,8 +19,8 @@ Estos resultados corresponden al prototipo academico ejecutado en Wokwi CLI. No 
 | --- | ---: |
 | Corridas medidas | 25 |
 | Deadline `RT-03` | 500000 us |
-| WORT observado | 22502 us |
-| Margen observado | 477498 us |
+| WORT observado | 22504 us |
+| Margen observado | 477496 us |
 | Fallas | 0 |
 
 La medicion de `RT-03` usa:

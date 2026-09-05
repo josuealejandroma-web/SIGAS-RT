@@ -112,7 +112,7 @@ Variables logicas:
 
 No se debe mezclar la orden al actuador con el movimiento fisico completo del actuador. En simulacion, el servo representa una valvula academica, no una valvula certificada.
 
-El analisis temporal final del prototipo simulado esta documentado en `docs/analisis_temporal.md`. El maximo observado para `T_ACTUATOR_RECEIVED - T_CRITICAL_CONFIRMED` fue 22502 us frente a un deadline de 500000 us.
+El analisis temporal final del prototipo simulado esta documentado en `docs/analisis_temporal.md`. El maximo observado para `T_ACTUATOR_RECEIVED - T_CRITICAL_CONFIRMED` fue 22504 us frente a un deadline de 500000 us.
 
 ## Reglas de implementacion
 

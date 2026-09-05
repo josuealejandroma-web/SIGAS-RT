@@ -62,23 +62,23 @@ Se ejecutaron 25 corridas temporales:
 
 | Grupo | Metrica | Min us | Promedio us | Mediana us | Max us | P95 us | P99 us |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Normal | `confirmation_time_us` | 200050 | 200051.4 | 200052 | 200052 | 200052 | 200052 |
-| Normal | `post_confirmation_received_us` | 22342 | 22441.9 | 22419 | 22502 | 22502 | 22502 |
-| Normal | `post_confirmation_applied_us` | 22878 | 22960.25 | 22936.5 | 23019 | 23019 | 23019 |
-| Normal | `end_to_end_received_us` | 222392 | 222493.3 | 222469 | 222554 | 222554 | 222554 |
-| Diagnostico con carga | `confirmation_time_us` | 200052 | 200052 | 200052 | 200052 | 200052 | 200052 |
-| Diagnostico con carga | `post_confirmation_received_us` | 22413 | 22466.6 | 22502 | 22502 | 22502 | 22502 |
-| Diagnostico con carga | `post_confirmation_applied_us` | 22931 | 22983.8 | 23019 | 23019 | 23019 | 23019 |
-| Diagnostico con carga | `end_to_end_received_us` | 222465 | 222518.6 | 222554 | 222554 | 222554 | 222554 |
+| Normal | `confirmation_time_us` | 200050 | 200051.35 | 200052 | 200052 | 200052 | 200052 |
+| Normal | `post_confirmation_received_us` | 22413 | 22449.9 | 22419 | 22504 | 22504 | 22504 |
+| Normal | `post_confirmation_applied_us` | 22930 | 22967.15 | 22936 | 23021 | 23021 | 23021 |
+| Normal | `end_to_end_received_us` | 222465 | 222501.25 | 222469 | 222554 | 222554 | 222554 |
+| Diagnostico con carga | `confirmation_time_us` | 200051 | 200051.8 | 200052 | 200052 | 200052 | 200052 |
+| Diagnostico con carga | `post_confirmation_received_us` | 22413 | 22431 | 22413 | 22502 | 22502 | 22502 |
+| Diagnostico con carga | `post_confirmation_applied_us` | 22931 | 22948.6 | 22931 | 23019 | 23019 | 23019 |
+| Diagnostico con carga | `end_to_end_received_us` | 222465 | 222482.8 | 222465 | 222554 | 222554 | 222554 |
 
 ## Worst Observed Response Time
 
 El maximo observado para el criterio `RT-03` fue:
 
 ```text
-Worst Observed Response Time (WORT) = 22502 us
+Worst Observed Response Time (WORT) = 22504 us
 Deadline = 500000 us
-Safety Margin = 477498 us
+Safety Margin = 477496 us
 MarginPercent = 95.50 %
 ```
 
@@ -86,7 +86,7 @@ Todas las corridas medidas cumplieron el deadline:
 
 | runs_total | passes | fails | worst_response_us | deadline_us | margin_us |
 | ---: | ---: | ---: | ---: | ---: | ---: |
-| 25 | 25 | 0 | 22502 | 500000 | 477498 |
+| 25 | 25 | 0 | 22504 | 500000 | 477496 |
 
 ## Periodicidad y confirmacion
 
@@ -148,7 +148,7 @@ Este valor no es una prueba formal de planificabilidad RMS. Las prioridades no f
 El maximo medido se reporta como WORT, no como WCRT formal:
 
 ```text
-WORT = 22502 us
+WORT = 22504 us
 ```
 
 No se presenta un WCRT analitico formal porque la ejecucion ocurre en Wokwi, sobre Arduino/FreeRTOS, con simulacion y sin una caracterizacion completa de interrupciones, tiempos de libreria, temporizacion del host ni modelo certificado del actuador.

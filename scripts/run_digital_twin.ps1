@@ -1,5 +1,5 @@
 param(
-  [string]$GodotCommand = "godot",
+  [string]$GodotCommand = "",
   [int]$BridgeTimeoutMs = 30000
 )
 
@@ -9,6 +9,20 @@ Set-Location $RepoRoot
 
 function Test-Command($Name) {
   return $null -ne (Get-Command $Name -ErrorAction SilentlyContinue)
+}
+
+function Resolve-GodotCommand() {
+  if (-not [string]::IsNullOrWhiteSpace($GodotCommand)) {
+    return $GodotCommand
+  }
+  $localGodot = Join-Path $RepoRoot "tools\godot\godot.cmd"
+  if (Test-Path $localGodot) {
+    return $localGodot
+  }
+  if (Test-Command "godot") {
+    return "godot"
+  }
+  return ""
 }
 
 if (-not (Test-Command "python")) {
@@ -44,7 +58,8 @@ if ($LASTEXITCODE -ne 0) {
   exit $LASTEXITCODE
 }
 
-if (-not (Test-Command $GodotCommand)) {
+$ResolvedGodot = Resolve-GodotCommand
+if ([string]::IsNullOrWhiteSpace($ResolvedGodot)) {
   Write-Warning "Godot no esta disponible en PATH. Inicia manualmente visualization\godot cuando instales Godot 4."
 }
 
@@ -56,8 +71,8 @@ $bridgeArgs = @(
 
 $bridge = Start-Process -FilePath "python" -ArgumentList $bridgeArgs -NoNewWindow -PassThru
 try {
-  if (Test-Command $GodotCommand) {
-    & $GodotCommand --path "visualization\godot"
+  if (-not [string]::IsNullOrWhiteSpace($ResolvedGodot)) {
+    & $ResolvedGodot --path "visualization\godot"
   } else {
     Write-Host "Bridge iniciado. Usa UDP 127.0.0.1:45701/45702 para pruebas locales."
     Wait-Process -Id $bridge.Id

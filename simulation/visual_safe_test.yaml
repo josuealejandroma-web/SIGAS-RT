@@ -20,3 +20,4 @@ steps:
   - wait-serial: "\"valve\":\"CLOSED\""
   - wait-serial: "\"state\":\"SYSTEM_NORMAL\""
   - wait-serial: "\"valve\":\"OPEN\""
+  - wait-serial: "\"deadline_us\":500000}"

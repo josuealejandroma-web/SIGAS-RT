@@ -6,7 +6,7 @@
 | --- | --- | --- | --- |
 | RT-01 | TT-01 a TT-06 | `TaskSensors` periodica con `vTaskDelayUntil()` y `SENSOR_PERIOD=100 ms`. | PASS |
 | RT-02 | Revision de codigo | `src/sensors.cpp` y `src/diagnostics.cpp` usan `vTaskDelayUntil()`. | PASS |
-| RT-03 | TT-01 a TT-06 | `post_confirmation_received_us <= 500000`; WORT observado 22502 us. | PASS |
+| RT-03 | TT-01 a TT-06 | `post_confirmation_received_us <= 500000`; WORT observado 22504 us. | PASS |
 | RT-04 | Revision de codigo | `TaskSafety` prioridad 4, superior a `TaskDiagnostics` prioridad 1. | PASS |
 | RT-05 | Revision de codigo | `TaskActuator` prioridad 5, maxima del sistema. | PASS |
 | RT-06 | TT-04 | Carga controlada en `TaskDiagnostics`; peor respuesta `post_confirmation_received_us` 22502 us. | PASS |

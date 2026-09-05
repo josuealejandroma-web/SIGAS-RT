@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import time
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -19,6 +21,13 @@ class Scenario:
     label: str
     scenario: Path
     description: str
+    env: str
+
+
+@dataclass(frozen=True)
+class RunningScenario:
+    process: subprocess.Popen[str]
+    serial_log: Path
 
 
 class ScenarioCatalog:
@@ -26,6 +35,10 @@ class ScenarioCatalog:
         self.catalog_path = catalog_path
         self.simulation_dir = simulation_dir
         raw = json.loads(catalog_path.read_text(encoding="utf-8"))
+        self._aliases = {
+            str(alias).strip().upper(): str(target).strip().upper()
+            for alias, target in raw.get("aliases", {}).items()
+        }
         self._commands: dict[str, Scenario] = {}
         for command, item in raw.get("commands", {}).items():
             scenario_name = str(item["scenario"])
@@ -37,13 +50,15 @@ class ScenarioCatalog:
                 label=str(item.get("label", command)),
                 scenario=scenario_path,
                 description=str(item.get("description", "")),
+                env=str(item.get("env", "esp32doit-devkit-v1-visualization")),
             )
 
     def commands(self) -> list[str]:
-        return sorted(self._commands)
+        return sorted(self._commands) + sorted(self._aliases)
 
     def resolve(self, command: str) -> Scenario:
         normalized = command.strip().upper()
+        normalized = self._aliases.get(normalized, normalized)
         if normalized not in self._commands:
             raise ScenarioError(f"command not allowed: {normalized}")
         if any(term in normalized for term in ("VALVE", "BUZZER", "LED", "ACTUATOR", "SERVO")):
@@ -52,24 +67,32 @@ class ScenarioCatalog:
 
 
 class WokwiScenarioRunner:
-    def __init__(self, wokwi_cli: Path, simulation_dir: Path) -> None:
+    def __init__(self, wokwi_cli: Path, simulation_dir: Path, repo_root: Path, platformio: Path | None = None) -> None:
         self.wokwi_cli = wokwi_cli
         self.simulation_dir = simulation_dir
+        self.repo_root = repo_root
+        self.platformio = platformio
 
-    def start(self, scenario: Scenario, timeout_ms: int) -> subprocess.Popen[str]:
-        if not os.environ.get("WOKWI_CLI_TOKEN"):
+    def start(self, scenario: Scenario, timeout_ms: int) -> RunningScenario:
+        if not self._has_wokwi_token():
             raise ScenarioError("WOKWI_CLI_TOKEN is not configured")
         if not self.wokwi_cli.is_file():
             raise ScenarioError(f"wokwi-cli not found: {self.wokwi_cli}")
+        self._build_environment(scenario.env)
+        serial_log = self.simulation_dir / f"wokwi-serial-bridge-{int(time.time() * 1000)}.log"
+        if serial_log.exists():
+            serial_log.unlink()
         command = [
             str(self.wokwi_cli),
             "--timeout",
             str(timeout_ms),
             "--scenario",
             scenario.scenario.name,
+            "--serial-log-file",
+            serial_log.name,
             ".",
         ]
-        return subprocess.Popen(
+        process = subprocess.Popen(
             command,
             cwd=self.simulation_dir,
             stdout=subprocess.PIPE,
@@ -79,3 +102,51 @@ class WokwiScenarioRunner:
             errors="replace",
             env=os.environ.copy(),
         )
+        return RunningScenario(process=process, serial_log=serial_log)
+
+    def _build_environment(self, env_name: str) -> None:
+        platformio = self._platformio_command()
+        result = subprocess.run(
+            [str(platformio), "run", "-e", env_name],
+            cwd=self.repo_root,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        if result.returncode != 0:
+            raise ScenarioError(f"PlatformIO build failed for {env_name}\n{result.stdout}")
+        source_elf = self.repo_root / ".pio" / "build" / env_name / "firmware.elf"
+        target_elf = self.repo_root / ".pio" / "build" / "esp32doit-devkit-v1" / "firmware.elf"
+        target_elf.parent.mkdir(parents=True, exist_ok=True)
+        if source_elf.is_file():
+            shutil.copyfile(source_elf, target_elf)
+
+    def _platformio_command(self) -> Path:
+        if self.platformio and self.platformio.exists():
+            return self.platformio
+        local = self.repo_root / ".venv" / "Scripts" / "platformio.exe"
+        if local.exists():
+            return local
+        found = shutil.which("platformio")
+        if found:
+            return Path(found)
+        raise ScenarioError("PlatformIO not found")
+
+    def _has_wokwi_token(self) -> bool:
+        if os.environ.get("WOKWI_CLI_TOKEN"):
+            return True
+        if os.name != "nt":
+            return False
+        try:
+            import winreg
+
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as key:
+                token, _ = winreg.QueryValueEx(key, "WOKWI_CLI_TOKEN")
+        except OSError:
+            return False
+        if not token:
+            return False
+        os.environ["WOKWI_CLI_TOKEN"] = str(token)
+        return True

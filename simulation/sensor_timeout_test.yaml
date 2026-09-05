@@ -17,4 +17,4 @@ steps:
   - wait-serial: "[BOOT][SIGAS-RT] FreeRTOS integration mode iniciado"
   - wait-serial: "[FAULT] SENSOR_DATA_TIMEOUT"
   - wait-serial: "SYSTEM_STARTUP -> SYSTEM_FAULT REASON=SENSOR_TIMEOUT"
-  - wait-serial: "ACTION=SAFE_CLOSE VALVE=CLOSED"
+  - wait-serial: "STATE=SYSTEM_FAULT Z1=NORMAL Z2=NORMAL ACTION=SAFE_CLOSE"

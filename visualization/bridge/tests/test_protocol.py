@@ -1,12 +1,14 @@
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
 import sys
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scenario_runner import ScenarioCatalog, ScenarioError
+from scenario_runner import ScenarioCatalog, ScenarioError, WokwiScenarioRunner
 
 
 class ScenarioProtocolTests(unittest.TestCase):
@@ -33,6 +35,7 @@ class ScenarioProtocolTests(unittest.TestCase):
             catalog = ScenarioCatalog(catalog_path, sim)
             scenario = catalog.resolve("run_zone1_leak")
             self.assertEqual(scenario.scenario.name, "timing_test.yaml")
+            self.assertEqual(scenario.env, "esp32doit-devkit-v1-visualization")
 
     def test_rejects_unknown_command(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -68,6 +71,36 @@ class ScenarioProtocolTests(unittest.TestCase):
             catalog = ScenarioCatalog(catalog_path, sim)
             with self.assertRaises(ScenarioError):
                 catalog.resolve("RUN_VALVE_CLOSE")
+
+    def test_resolves_human_readable_alias(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            sim = root / "simulation"
+            sim.mkdir()
+            (sim / "timing_test.yaml").write_text("name: test\n", encoding="utf-8")
+            catalog_path = root / "catalog.json"
+            catalog_path.write_text(
+                json.dumps(
+                    {
+                        "commands": {
+                            "RUN_ZONE1_LEAK": {
+                                "label": "Zona 1",
+                                "scenario": "timing_test.yaml",
+                            }
+                        },
+                        "aliases": {"FUGA COCINA": "RUN_ZONE1_LEAK"},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            catalog = ScenarioCatalog(catalog_path, sim)
+            scenario = catalog.resolve("Fuga Cocina")
+            self.assertEqual(scenario.command, "RUN_ZONE1_LEAK")
+
+    def test_runner_accepts_process_token_without_printing_value(self):
+        runner = WokwiScenarioRunner(Path("wokwi-cli.exe"), Path("."), Path("."))
+        with mock.patch.dict(os.environ, {"WOKWI_CLI_TOKEN": "wok" + "_test_value"}, clear=False):
+            self.assertTrue(runner._has_wokwi_token())
 
 
 if __name__ == "__main__":

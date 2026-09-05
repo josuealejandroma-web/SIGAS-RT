@@ -1,47 +1,76 @@
 {
   "version": 1,
   "commands": {
+    "RUN_NORMAL": {
+      "label": "Normal",
+      "scenario": "visual_safe_test.yaml",
+      "env": "esp32doit-devkit-v1-visualization",
+      "description": "Arranque seguro hasta operacion normal.",
+      "visual_id": "safe_startup"
+    },
     "RUN_SAFE": {
       "label": "Seguro",
       "scenario": "visual_safe_test.yaml",
+      "env": "esp32doit-devkit-v1-visualization",
       "description": "Arranque, sensores normales y salidas seguras.",
       "visual_id": "safe_startup"
     },
     "RUN_ZONE1_LEAK": {
       "label": "Fuga Zona 1",
       "scenario": "timing_test.yaml",
+      "env": "esp32doit-devkit-v1-visualization",
       "description": "Fuga sostenida en Zona 1 hasta cierre seguro.",
       "visual_id": "zone1_leak"
     },
     "RUN_ZONE2_LEAK": {
       "label": "Fuga Zona 2",
       "scenario": "timing_zone2_test.yaml",
+      "env": "esp32doit-devkit-v1-visualization",
       "description": "Fuga sostenida en Zona 2 hasta cierre seguro.",
       "visual_id": "zone2_leak"
     },
     "RUN_BOTH_LEAK": {
       "label": "Fuga doble",
       "scenario": "timing_both_test.yaml",
+      "env": "esp32doit-devkit-v1-visualization",
       "description": "Fuga simultanea en ambas zonas.",
       "visual_id": "both_zones_leak"
     },
     "RUN_FALSE_POSITIVE": {
       "label": "Falso positivo",
       "scenario": "critical_logic_spike_test.yaml",
+      "env": "esp32doit-devkit-v1-visualization",
       "description": "Pico transitorio que no debe cerrar por condicion critica.",
       "visual_id": "false_positive"
     },
     "RUN_SENSOR_TIMEOUT": {
       "label": "Timeout sensor",
       "scenario": "sensor_timeout_test.yaml",
+      "env": "esp32doit-devkit-v1-visualization-sensor-timeout-test",
       "description": "Perdida de datos de sensor despues de una muestra valida.",
       "visual_id": "sensor_timeout"
     },
     "RUN_INITIAL_TIMEOUT": {
       "label": "Timeout inicial",
       "scenario": "initial_sensor_timeout_test.yaml",
+      "env": "esp32doit-devkit-v1-visualization-initial-sensor-timeout-test",
       "description": "Ausencia de primera muestra durante el arranque.",
       "visual_id": "initial_sensor_timeout"
+    },
+    "FULL_DEMO": {
+      "label": "Full demo",
+      "scenario": "critical_logic_test.yaml",
+      "env": "esp32doit-devkit-v1-visualization",
+      "description": "Demostracion completa con fuga, enclavamiento, condiciones seguras y rearme.",
+      "visual_id": "full_demo"
     }
+  },
+  "aliases": {
+    "FUGA COCINA": "RUN_ZONE1_LEAK",
+    "FUGA CALEFON": "RUN_ZONE2_LEAK",
+    "FUGA CALEFÓN": "RUN_ZONE2_LEAK",
+    "PICO AISLADO": "RUN_FALSE_POSITIVE",
+    "FALLA SENSOR": "RUN_SENSOR_TIMEOUT",
+    "FULL DEMO": "FULL_DEMO"
   }
 }
