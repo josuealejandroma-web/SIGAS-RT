@@ -1,0 +1,27 @@
+[gd_scene load_steps=5 format=3 uid="uid://sigasrt_main"]
+
+[ext_resource type="Script" path="res://scripts/Main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/DigitalTwin.gd" id="2_twin"]
+[ext_resource type="Script" path="res://scripts/OrbitCamera.gd" id="3_camera"]
+[ext_resource type="Script" path="res://scripts/Hud.gd" id="4_hud"]
+
+[node name="Main" type="Node3D"]
+script = ExtResource("1_main")
+
+[node name="DigitalTwin" type="Node3D" parent="."]
+script = ExtResource("2_twin")
+
+[node name="CameraRig" type="Node3D" parent="."]
+script = ExtResource("3_camera")
+
+[node name="Camera3D" type="Camera3D" parent="CameraRig"]
+current = true
+transform = Transform3D(1, 0, 0, 0, 0.906308, 0.422618, 0, -0.422618, 0.906308, 0, 8, 13)
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.707107, -0.353553, 0.612372, 0, 0.866025, 0.5, -0.707107, -0.353553, 0.612372, 0, 10, 0)
+light_energy = 2.2
+shadow_enabled = true
+
+[node name="Hud" type="CanvasLayer" parent="."]
+script = ExtResource("4_hud")
