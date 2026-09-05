@@ -42,6 +42,7 @@ void taskActuator(void *parameters) {
   RequestedAction lastAction = RequestedAction::kNormal;
   bool hasCommand = false;
   bool buzzerStarted = false;
+  uint64_t maxObservedExecutionUs = 0;
 
   Serial.println("[TASK][TaskActuator] CREATED");
 
@@ -51,6 +52,7 @@ void taskActuator(void *parameters) {
       continue;
     }
 
+    const uint64_t taskStartUs = static_cast<uint64_t>(esp_timer_get_time());
     valveServo.write(command.valveAngle);
     digitalWrite(PIN_LED_GREEN, command.greenLedOn ? HIGH : LOW);
     digitalWrite(PIN_LED_RED, command.redLedOn ? HIGH : LOW);
@@ -63,6 +65,7 @@ void taskActuator(void *parameters) {
     }
 
     const uint64_t receivedUs = static_cast<uint64_t>(esp_timer_get_time());
+    const uint64_t executionUs = receivedUs - taskStartUs;
     if (!hasCommand || command.action != lastAction) {
       Serial.printf("[ACTUATOR] ACTION=%s VALVE=%s BUZZER=%s GREEN=%s RED=%s SEQ=%lu T_ACTUATOR_RECEIVED=%llu\r\n",
                     toString(command.action),
@@ -73,6 +76,37 @@ void taskActuator(void *parameters) {
                     command.redLedOn ? "ON" : "OFF",
                     static_cast<unsigned long>(command.sequence),
                     static_cast<unsigned long long>(receivedUs));
+    }
+    if ((!hasCommand || command.action != lastAction) &&
+        command.action == RequestedAction::kSafeClose &&
+        command.criticalConfirmedTimestampUs > 0) {
+      const uint64_t confirmationUs =
+          command.criticalConfirmedTimestampUs - command.firstHighTimestampUs;
+      const uint64_t commandLatencyUs =
+          command.commandTimestampUs - command.criticalConfirmedTimestampUs;
+      const uint64_t dispatchLatencyUs = receivedUs - command.commandTimestampUs;
+      const uint64_t postConfirmationUs =
+          receivedUs - command.criticalConfirmedTimestampUs;
+      const uint64_t endToEndUs = receivedUs - command.firstHighTimestampUs;
+      Serial.printf("[TIMING] SEQ=%lu T_FIRST_HIGH=%llu T_CRITICAL_CONFIRMED=%llu T_COMMAND_SENT=%llu T_ACTUATOR_RECEIVED=%llu CONFIRMATION_US=%llu COMMAND_LATENCY_US=%llu DISPATCH_LATENCY_US=%llu POST_CONFIRMATION_US=%llu END_TO_END_US=%llu DEADLINE_US=500000 RESULT=%s\r\n",
+                    static_cast<unsigned long>(command.sequence),
+                    static_cast<unsigned long long>(command.firstHighTimestampUs),
+                    static_cast<unsigned long long>(
+                        command.criticalConfirmedTimestampUs),
+                    static_cast<unsigned long long>(command.commandTimestampUs),
+                    static_cast<unsigned long long>(receivedUs),
+                    static_cast<unsigned long long>(confirmationUs),
+                    static_cast<unsigned long long>(commandLatencyUs),
+                    static_cast<unsigned long long>(dispatchLatencyUs),
+                    static_cast<unsigned long long>(postConfirmationUs),
+                    static_cast<unsigned long long>(endToEndUs),
+                    postConfirmationUs <= 500000ULL ? "PASS" : "FAIL");
+    }
+    if (executionUs > maxObservedExecutionUs) {
+      maxObservedExecutionUs = executionUs;
+      Serial.printf("[WCET_OBSERVED] TASK=TaskActuator DURATION_US=%llu SEQ=%lu\r\n",
+                    static_cast<unsigned long long>(executionUs),
+                    static_cast<unsigned long>(command.sequence));
     }
     lastAction = command.action;
     hasCommand = true;

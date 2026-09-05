@@ -44,7 +44,7 @@ La histeresis evita oscilar entre `NORMAL` y `WARNING` cuando la lectura baja de
 
 ## Confirmacion
 
-La condicion critica se confirma con `CRITICAL_CONFIRMATION_SAMPLES = 3` muestras consecutivas `HIGH` en cualquiera de las dos zonas. Con `SENSOR_PERIOD_MS = 100`, la latencia de confirmacion esperada es aproximadamente 300 ms desde el inicio de la condicion alta sostenida.
+La condicion critica se confirma con `CRITICAL_CONFIRMATION_SAMPLES = 3` muestras consecutivas `HIGH` en cualquiera de las dos zonas. Con `SENSOR_PERIOD = 100 ms`, la latencia de confirmacion esperada es aproximadamente 300 ms desde el inicio de la condicion alta sostenida.
 
 Un pico aislado genera candidato `HIGH`, pero no emite `SAFE_CLOSE` si no llega a 3 muestras.
 
@@ -103,7 +103,7 @@ En una corrida Wokwi de referencia, Zona 1 produjo:
 | CL-07 | Reset rechazado con zona insegura. | `critical_logic_test.yaml` |
 | CL-08 | Reset aceptado con ambas zonas seguras y debounce. | `critical_logic_test.yaml` |
 | CL-09 | Zona 2 alta y ambas zonas altas. | `critical_logic_test.yaml` |
-| CL-10 | Timeout de datos de sensor entra en `SYSTEM_FAULT`. | Implementado en `src/safety.cpp`; requiere escenario especifico de inyeccion/falla de sensores para validacion automatica. |
+| CL-10 | Timeout de datos de sensor entra en `SYSTEM_FAULT`. | `sensor_timeout_test.yaml` con build flag `SIGAS_RT_SENSOR_TIMEOUT_TEST`. |
 
 ## Trazabilidad preliminar
 

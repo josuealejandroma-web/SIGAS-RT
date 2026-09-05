@@ -7,8 +7,8 @@ La Fase 2 separa adquisicion, seguridad, actuacion y diagnostico. `loop()` no co
 | Tarea | Tipo | Periodo | Prioridad | Deadline | Funcion |
 | --- | --- | --- | --- | --- | --- |
 | `TaskSensors` | Periodica | 100 ms | 3 | 100 ms | Leer ADC Zona 1 y Zona 2, timestamp monotono, boton y publicar una muestra consistente. |
-| `TaskSafety` | Evento con timeout | Cola con timeout 50 ms | 4 | RT-03 pendiente de analisis formal | Clasificar, aplicar histeresis, confirmar condicion critica, enclavar estado seguro y validar rearme. |
-| `TaskActuator` | Evento | Inmediata al comando | 5 | RT-03 pendiente de analisis formal | Control exclusivo de servo, buzzer, LED verde y LED rojo durante operacion normal. |
+| `TaskSafety` | Evento con timeout | Cola con timeout 50 ms | 4 | Ver `docs/analisis_temporal.md` | Clasificar, aplicar histeresis, confirmar condicion critica, enclavar estado seguro y validar rearme. |
+| `TaskActuator` | Evento | Inmediata al comando | 5 | Ver `docs/analisis_temporal.md` | Control exclusivo de servo, buzzer, LED verde y LED rojo durante operacion normal. |
 | `TaskDiagnostics` | Periodica | 500 ms | 1 | No critico | Enviar por Serial muestras, decisiones, timestamps y estado de boton. |
 
 `TaskIndicators` queda absorbida por `TaskActuator` para cumplir una regla simple: durante operacion normal, una sola tarea controla todos los actuadores fisicos. Si mas adelante se separan indicadores no criticos, deberan recibir estado sin tocar directamente el cierre seguro.
@@ -110,6 +110,8 @@ Variables logicas:
 | `ResponseTimeActuatorQueue` | `T_ACTUATOR_RECEIVED - T_COMMAND_SENT`. |
 
 No se debe mezclar la orden al actuador con el movimiento fisico completo del actuador. En simulacion, el servo representa una valvula academica, no una valvula certificada.
+
+El analisis temporal final del prototipo simulado esta documentado en `docs/analisis_temporal.md`. El maximo observado para `T_ACTUATOR_RECEIVED - T_CRITICAL_CONFIRMED` fue 23123 us frente a un deadline de 500000 us.
 
 ## Reglas de implementacion
 

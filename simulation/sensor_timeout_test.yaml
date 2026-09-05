@@ -1,0 +1,20 @@
+name: "SIGAS-RT CL-10 sensor data timeout test"
+version: 1
+author: "SIGAS-RT"
+steps:
+  - set-control:
+      part-id: resetBtn
+      control: pressed
+      value: 0
+  - set-control:
+      part-id: adcStimZ1
+      control: position
+      value: 0.1
+  - set-control:
+      part-id: adcStimZ2
+      control: position
+      value: 0.1
+  - wait-serial: "[BOOT][SIGAS-RT] FreeRTOS integration mode iniciado"
+  - wait-serial: "[FAULT] SENSOR_DATA_TIMEOUT"
+  - wait-serial: "SYSTEM_NORMAL -> SYSTEM_FAULT REASON=SENSOR_TIMEOUT"
+  - wait-serial: "ACTION=SAFE_CLOSE VALVE=CLOSED"

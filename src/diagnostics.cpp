@@ -4,6 +4,19 @@
 #include "system_types.h"
 
 namespace sigas {
+namespace {
+
+void runControlledDiagnosticsLoad() {
+#ifdef SIGAS_RT_DIAGNOSTICS_LOAD
+  volatile uint32_t accumulator = 0;
+  for (uint32_t i = 0; i < DIAGNOSTICS_LOAD_ITERATIONS_SIMULATION_ONLY; ++i) {
+    accumulator += i ^ (accumulator << 1);
+  }
+  (void)accumulator;
+#endif
+}
+
+}  // namespace
 
 void taskDiagnostics(void *parameters) {
   auto *context = static_cast<DiagnosticsTaskContext *>(parameters);
@@ -28,6 +41,8 @@ void taskDiagnostics(void *parameters) {
       latestDecision = decision;
       hasDecision = true;
     }
+
+    runControlledDiagnosticsLoad();
 
     if (hasSample) {
       Serial.printf("[SENSORS] SEQ=%lu Z1=%u Z2=%u RESET=%s T=%lu\r\n",

@@ -28,11 +28,13 @@ Los umbrales definidos para Wokwi son umbrales experimentales de simulacion. No 
 | --- | --- |
 | RT-01 | Las tareas de adquisicion de sensores deben ejecutarse periodicamente. |
 | RT-02 | Las tareas periodicas deben usar `vTaskDelayUntil()` en lugar de `delay()` para temporizacion normal. |
-| RT-03 | Desde la confirmacion de condicion critica (`T_detect`) hasta la emision de orden al actuador (`T_command`) no deben transcurrir mas de 500 ms en el prototipo simulado. |
+| RT-03 | Desde la confirmacion de condicion critica (`T_CRITICAL_CONFIRMED`) hasta la recepcion del comando por `TaskActuator` (`T_ACTUATOR_RECEIVED`) no deben transcurrir mas de 500 ms en el prototipo simulado. |
 | RT-04 | `TaskSafety` debe tener prioridad superior a tareas visuales y de diagnostico. |
 | RT-05 | `TaskActuator` debe tener prioridad maxima o equivalente justificada para ejecutar la orden de cierre. |
 | RT-06 | `TaskDiagnostics` no debe bloquear la ejecucion de tareas criticas. |
 | RT-07 | La medicion temporal debe diferenciar `ResponseTimeSoftware = T_command - T_detect` de `ResponseTimeTotal = T_valve_closed - T_detect` cuando este ultimo pueda estimarse. |
+
+Nota: antes del bloque de analisis temporal, `RT-03` estaba formulado hasta la emision del comando (`T_command`). Para este bloque se hizo explicito el criterio mas estricto solicitado: medir hasta `T_ACTUATOR_RECEIVED`.
 
 ## Requisitos de seguridad
 

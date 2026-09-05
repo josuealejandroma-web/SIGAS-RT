@@ -286,6 +286,7 @@ void taskSafety(void *parameters) {
   auto *context = static_cast<SafetyTaskContext *>(parameters);
   SensorSample sample{};
   SafetyRuntime runtime{};
+  uint64_t maxObservedExecutionUs = 0;
 
   Serial.println("[TASK][TaskSafety] CREATED");
 
@@ -299,8 +300,17 @@ void taskSafety(void *parameters) {
     runtime.lastSampleTimestampUs = sample.timestampUs;
     TransitionReason reason = TransitionReason::kStableNormal;
 
+    const uint64_t taskStartUs = static_cast<uint64_t>(esp_timer_get_time());
     updateStateFromSample(runtime, sample, reason);
     publishDecision(context, sample, runtime, reason);
+    const uint64_t taskEndUs = static_cast<uint64_t>(esp_timer_get_time());
+    const uint64_t executionUs = taskEndUs - taskStartUs;
+    if (executionUs > maxObservedExecutionUs) {
+      maxObservedExecutionUs = executionUs;
+      Serial.printf("[WCET_OBSERVED] TASK=TaskSafety DURATION_US=%llu SEQ=%lu\r\n",
+                    static_cast<unsigned long long>(executionUs),
+                    static_cast<unsigned long>(sample.sequence));
+    }
   }
 }
 

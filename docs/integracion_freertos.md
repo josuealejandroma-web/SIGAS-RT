@@ -35,7 +35,7 @@ La ruta de decision y actuacion queda por encima de diagnostico. `TaskActuator` 
 | `TaskActuator` | Evento por cola, espera bloqueante |
 | `TaskDiagnostics` | 500 ms con `vTaskDelayUntil()` |
 
-Se respeta el periodo de sensores documentado previamente. La medicion temporal formal queda fuera de este bloque.
+Se respeta el periodo de sensores documentado previamente. La medicion temporal final del prototipo simulado esta en `docs/analisis_temporal.md`.
 
 ## 5. Queues
 

@@ -1,0 +1,24 @@
+name: "SIGAS-RT timing test TT-01 zone 1"
+version: 1
+author: "SIGAS-RT"
+steps:
+  - set-control:
+      part-id: resetBtn
+      control: pressed
+      value: 0
+  - set-control:
+      part-id: adcStimZ1
+      control: position
+      value: 0.1
+  - set-control:
+      part-id: adcStimZ2
+      control: position
+      value: 0.1
+  - wait-serial: "[BOOT][SIGAS-RT] FreeRTOS integration mode iniciado"
+  - wait-serial: "STATE=SYSTEM_NORMAL Z1=NORMAL Z2=NORMAL ACTION=NORMAL"
+  - set-control:
+      part-id: adcStimZ1
+      control: position
+      value: 0.9
+  - wait-serial: "[TIMING]"
+  - wait-serial: "RESULT=PASS"

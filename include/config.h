@@ -47,6 +47,8 @@ constexpr uint16_t ACTUATOR_QUEUE_LENGTH = 1;
 constexpr uint16_t DIAGNOSTICS_QUEUE_LENGTH = 1;
 constexpr uint16_t TASK_STACK_WORDS = 4096;
 
+constexpr uint32_t DIAGNOSTICS_LOAD_ITERATIONS_SIMULATION_ONLY = 18000;
+
 }  // namespace sigas
 
 #endif  // SIGAS_RT_CONFIG_H
