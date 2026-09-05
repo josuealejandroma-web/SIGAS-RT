@@ -4,37 +4,44 @@
     "RUN_SAFE": {
       "label": "Seguro",
       "scenario": "hardware_smoke_test.yaml",
-      "description": "Arranque, sensores normales y salidas seguras."
+      "description": "Arranque, sensores normales y salidas seguras.",
+      "visual_id": "safe_startup"
     },
     "RUN_ZONE1_LEAK": {
       "label": "Fuga Zona 1",
       "scenario": "timing_test.yaml",
-      "description": "Fuga sostenida en Zona 1 hasta cierre seguro."
+      "description": "Fuga sostenida en Zona 1 hasta cierre seguro.",
+      "visual_id": "zone1_leak"
     },
     "RUN_ZONE2_LEAK": {
       "label": "Fuga Zona 2",
       "scenario": "timing_zone2_test.yaml",
-      "description": "Fuga sostenida en Zona 2 hasta cierre seguro."
+      "description": "Fuga sostenida en Zona 2 hasta cierre seguro.",
+      "visual_id": "zone2_leak"
     },
     "RUN_BOTH_LEAK": {
       "label": "Fuga doble",
       "scenario": "timing_both_test.yaml",
-      "description": "Fuga simultanea en ambas zonas."
+      "description": "Fuga simultanea en ambas zonas.",
+      "visual_id": "both_zones_leak"
     },
     "RUN_FALSE_POSITIVE": {
       "label": "Falso positivo",
       "scenario": "critical_logic_spike_test.yaml",
-      "description": "Pico transitorio que no debe cerrar por condicion critica."
+      "description": "Pico transitorio que no debe cerrar por condicion critica.",
+      "visual_id": "false_positive"
     },
     "RUN_SENSOR_TIMEOUT": {
       "label": "Timeout sensor",
       "scenario": "sensor_timeout_test.yaml",
-      "description": "Perdida de datos de sensor despues de una muestra valida."
+      "description": "Perdida de datos de sensor despues de una muestra valida.",
+      "visual_id": "sensor_timeout"
     },
     "RUN_INITIAL_TIMEOUT": {
       "label": "Timeout inicial",
       "scenario": "initial_sensor_timeout_test.yaml",
-      "description": "Ausencia de primera muestra durante el arranque."
+      "description": "Ausencia de primera muestra durante el arranque.",
+      "visual_id": "initial_sensor_timeout"
     }
   }
 }

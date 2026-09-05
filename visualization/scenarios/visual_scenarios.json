@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "scenarios": [
+    {
+      "id": "safe_startup",
+      "command": "RUN_SAFE",
+      "title": "Arranque seguro",
+      "camera_focus": "controller",
+      "zones": [],
+      "expected_states": ["SYSTEM_STARTUP", "SYSTEM_NORMAL"],
+      "expected_result": "PASS"
+    },
+    {
+      "id": "zone1_leak",
+      "command": "RUN_ZONE1_LEAK",
+      "title": "Fuga sostenida en Zona 1",
+      "camera_focus": "kitchen",
+      "zones": ["Z1"],
+      "expected_states": ["SYSTEM_WARNING", "SYSTEM_SAFE_LATCHED"],
+      "expected_result": "PASS"
+    },
+    {
+      "id": "zone2_leak",
+      "command": "RUN_ZONE2_LEAK",
+      "title": "Fuga sostenida en Zona 2",
+      "camera_focus": "heater",
+      "zones": ["Z2"],
+      "expected_states": ["SYSTEM_WARNING", "SYSTEM_SAFE_LATCHED"],
+      "expected_result": "PASS"
+    },
+    {
+      "id": "both_zones_leak",
+      "command": "RUN_BOTH_LEAK",
+      "title": "Fuga simultanea",
+      "camera_focus": "wide",
+      "zones": ["Z1", "Z2"],
+      "expected_states": ["SYSTEM_WARNING", "SYSTEM_SAFE_LATCHED"],
+      "expected_result": "PASS"
+    },
+    {
+      "id": "false_positive",
+      "command": "RUN_FALSE_POSITIVE",
+      "title": "Pico transitorio",
+      "camera_focus": "kitchen",
+      "zones": ["Z1"],
+      "expected_states": ["SYSTEM_WARNING", "SYSTEM_NORMAL"],
+      "expected_result": "PASS"
+    },
+    {
+      "id": "sensor_timeout",
+      "command": "RUN_SENSOR_TIMEOUT",
+      "title": "Perdida de sensor",
+      "camera_focus": "controller",
+      "zones": [],
+      "expected_states": ["SYSTEM_STARTUP", "SYSTEM_FAULT"],
+      "expected_result": "PASS"
+    },
+    {
+      "id": "initial_sensor_timeout",
+      "command": "RUN_INITIAL_TIMEOUT",
+      "title": "Ausencia de primera muestra",
+      "camera_focus": "controller",
+      "zones": [],
+      "expected_states": ["SYSTEM_STARTUP", "SYSTEM_FAULT"],
+      "expected_result": "PASS"
+    }
+  ]
+}
