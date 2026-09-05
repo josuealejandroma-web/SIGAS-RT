@@ -3,6 +3,8 @@
 #include "config.h"
 #include "system_types.h"
 
+#include <esp_timer.h>
+
 namespace sigas {
 
 void configureSensorInputs() {
@@ -24,7 +26,7 @@ void taskSensors(void *parameters) {
         static_cast<uint16_t>(analogRead(PIN_MQ2_ZONE_1_ADC)),
         static_cast<uint16_t>(analogRead(PIN_MQ2_ZONE_2_ADC)),
         digitalRead(PIN_RESET_BUTTON) == LOW,
-        millis(),
+        static_cast<uint64_t>(esp_timer_get_time()),
         ++sequence,
     };
 

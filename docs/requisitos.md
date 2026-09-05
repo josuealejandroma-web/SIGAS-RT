@@ -20,6 +20,7 @@ Los umbrales definidos para Wokwi son umbrales experimentales de simulacion. No 
 | RF-12 | El sistema no debe reabrir automaticamente la valvula cuando el valor ADC vuelva a normal. |
 | RF-13 | El sistema debe permitir rearme manual mediante boton solo cuando ambas zonas esten por debajo del umbral seguro experimental. |
 | RF-14 | El sistema debe soportar fuga en Zona 1, Zona 2 y fuga simultanea. |
+| RF-15 | El sistema debe registrar timestamps monotonicos para primera muestra alta, confirmacion critica, comando enviado y recepcion por actuador. |
 
 ## Requisitos de tiempo real
 
@@ -45,6 +46,7 @@ Los umbrales definidos para Wokwi son umbrales experimentales de simulacion. No 
 | RS-06 | La documentacion no debe incluir instrucciones para modificar una instalacion domiciliaria real. |
 | RS-07 | Ningun secreto, token o credencial debe almacenarse en el repositorio. |
 | RS-08 | El sistema debe adoptar filosofia fail-safe ante una condicion critica confirmada. |
+| RS-09 | Ante perdida de datos de sensor despues de una muestra valida, el sistema debe pasar a falla y ordenar cierre seguro. |
 
 ## Requisitos de hardware
 

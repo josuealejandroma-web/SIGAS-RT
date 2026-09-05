@@ -9,7 +9,7 @@ Este bloque verifica la arquitectura concurrente Sensor -> ADC -> CPU -> Actuado
 | Tarea | Responsabilidad |
 | --- | --- |
 | `TaskSensors` | Lee periodicamente GPIO34 y GPIO35 con `analogRead()`, lee el boton de rearme, agrega timestamp y publica `SensorSample`. |
-| `TaskSafety` | Consume muestras, clasifica cada zona con umbrales experimentales solo para Wokwi y genera comandos de actuacion. |
+| `TaskSafety` | Consume muestras, clasifica cada zona con umbrales experimentales solo para Wokwi, confirma condicion critica y genera comandos de actuacion. |
 | `TaskActuator` | Es la unica tarea que controla servo, buzzer, LED verde y LED rojo durante operacion normal. |
 | `TaskDiagnostics` | Imprime estado no critico por Serial a baja prioridad. |
 
@@ -52,9 +52,9 @@ Las colas tienen longitud 1 y usan `xQueueOverwrite()` para mantener el ultimo d
 
 | Estructura | Campos principales |
 | --- | --- |
-| `SensorSample` | `adcZone1`, `adcZone2`, `resetPressed`, `timestampMs`, `sequence` |
-| `SafetyDecision` | `zone1Level`, `zone2Level`, `requestedAction`, timestamps, `sequence` |
-| `ActuatorCommand` | `action`, `valveAngle`, `buzzerOn`, `greenLedOn`, `redLedOn`, timestamp, `sequence` |
+| `SensorSample` | `adcZone1`, `adcZone2`, `resetPressed`, `timestampUs`, `sequence` |
+| `SafetyDecision` | `systemState`, `zone1Level`, `zone2Level`, `requestedAction`, `reason`, timestamps, `sequence` |
+| `ActuatorCommand` | `action`, `valveAngle`, `buzzerOn`, `greenLedOn`, `redLedOn`, timestamps, `sequence` |
 
 Estas estructuras separan adquisicion, decision y actuacion.
 
@@ -100,8 +100,10 @@ Los limites estan centralizados en `include/config.h` y marcados como `SIMULATIO
 
 | Constante | Valor |
 | --- | --- |
-| `ADC_WARNING_THRESHOLD_SIMULATION_ONLY` | 1400 |
-| `ADC_HIGH_THRESHOLD_SIMULATION_ONLY` | 3000 |
+| `ADC_WARNING_ENTER_SIMULATION_ONLY` | 1400 |
+| `ADC_WARNING_EXIT_SIMULATION_ONLY` | 1000 |
+| `ADC_CRITICAL_SIMULATION_ONLY` | 3000 |
+| `ADC_SAFE_EXIT_SIMULATION_ONLY` | 1000 |
 
 Estos valores solo clasifican lecturas ADC crudas de Wokwi. No equivalen a ppm ni a un umbral comercial de seguridad.
 
@@ -110,8 +112,8 @@ Estos valores solo clasifican lecturas ADC crudas de Wokwi. No equivalen a ppm n
 | Caso | Estimulo | Resultado |
 | --- | --- | --- |
 | IT-01 NORMAL | Z1=410, Z2=410 | `TaskSensors` publica muestra, `TaskSafety` decide `NORMAL`, `TaskActuator` abre valvula, buzzer OFF, verde ON, rojo OFF. |
-| IT-02 ZONA 1 HIGH | Z1=3686, Z2=410 | `TaskSafety` clasifica Z1 `HIGH` y emite `SAFE_CLOSE`. |
-| IT-03 ZONA 2 HIGH | Z1=410, Z2=3686 | `TaskSafety` clasifica Z2 `HIGH` y mantiene `SAFE_CLOSE`. |
+| IT-02 ZONA 1 HIGH | Z1=3686, Z2=410 | `TaskSafety` confirma Z1 `HIGH` despues de 3 muestras y emite `SAFE_CLOSE`. |
+| IT-03 ZONA 2 HIGH | Z1=410, Z2=3686 | `TaskSafety` confirma Z2 `HIGH` despues de 3 muestras y mantiene `SAFE_CLOSE`. |
 | IT-04 AMBAS HIGH | Z1=3686, Z2=3686 | Ambas zonas `HIGH`, accion `SAFE_CLOSE`. |
 | IT-05 INDEPENDENCIA | Z1=2048/Z2=410 y luego Z1=410/Z2=2048 | Cada canal cambia de forma separada y se clasifica como `WARNING` solo en la zona modificada. |
 
@@ -119,7 +121,7 @@ El escenario `simulation/freertos_integration_test.yaml` termino correctamente c
 
 ## 12. Limitaciones
 
-- La clasificacion es logica de integracion experimental, no algoritmo final de seguridad.
-- No se implementan aun confirmacion por multiples muestras, filtrado, histeresis, watchdog, deteccion de sensor averiado ni WCRT.
-- El cierre queda enclavado despues de `HIGH`, pero el rearme final no esta implementado; el boton solo se registra por Serial.
+- La clasificacion es logica de integracion experimental para Wokwi, no algoritmo certificado de seguridad.
+- La confirmacion por multiples muestras, histeresis, enclavamiento, rearme seguro y timeout de datos de sensor ya estan implementados; WCRT formal queda fuera de este bloque.
+- El cierre queda enclavado despues de condicion critica confirmada; el boton reabre solo con ambas zonas seguras y debounce cumplido.
 - Los valores ADC provienen de simulacion y no representan concentracion certificada de gas.

@@ -17,20 +17,48 @@ enum class RequestedAction : uint8_t {
   kSafeClose,
 };
 
+enum class SystemState : uint8_t {
+  kNormal,
+  kWarning,
+  kCritical,
+  kSafeLatched,
+  kFault,
+};
+
+enum class TransitionReason : uint8_t {
+  kBoot,
+  kStableNormal,
+  kWarningLevel,
+  kCriticalCandidate,
+  kCriticalConfirmed,
+  kSafeCloseRequested,
+  kSafeConditions,
+  kResetRequested,
+  kResetAccepted,
+  kResetRejected,
+  kSensorTimeout,
+  kQueueFailure,
+};
+
 struct SensorSample {
   uint16_t adcZone1;
   uint16_t adcZone2;
   bool resetPressed;
-  uint32_t timestampMs;
+  uint64_t timestampUs;
   uint32_t sequence;
 };
 
 struct SafetyDecision {
+  SystemState systemState;
   ZoneLevel zone1Level;
   ZoneLevel zone2Level;
   RequestedAction requestedAction;
-  uint32_t sampleTimestampMs;
-  uint32_t decisionTimestampMs;
+  TransitionReason reason;
+  uint64_t sampleTimestampUs;
+  uint64_t decisionTimestampUs;
+  uint64_t firstHighTimestampUs;
+  uint64_t criticalConfirmedTimestampUs;
+  uint64_t commandSentTimestampUs;
   uint32_t sequence;
 };
 
@@ -40,12 +68,16 @@ struct ActuatorCommand {
   bool buzzerOn;
   bool greenLedOn;
   bool redLedOn;
-  uint32_t commandTimestampMs;
+  uint64_t commandTimestampUs;
+  uint64_t firstHighTimestampUs;
+  uint64_t criticalConfirmedTimestampUs;
   uint32_t sequence;
 };
 
 const char *toString(ZoneLevel level);
 const char *toString(RequestedAction action);
+const char *toString(SystemState state);
+const char *toString(TransitionReason reason);
 
 }  // namespace sigas
 

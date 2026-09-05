@@ -34,18 +34,22 @@ void taskDiagnostics(void *parameters) {
                     static_cast<unsigned long>(latestSample.sequence),
                     latestSample.adcZone1, latestSample.adcZone2,
                     latestSample.resetPressed ? "PRESSED" : "RELEASED",
-                    static_cast<unsigned long>(latestSample.timestampMs));
+                    static_cast<unsigned long>(
+                        latestSample.timestampUs / 1000ULL));
     }
 
     if (hasDecision) {
-      Serial.printf("[SAFETY] SEQ=%lu Z1=%s Z2=%s ACTION=%s SAMPLE_T=%lu DECISION_T=%lu\r\n",
+      Serial.printf("[SAFETY] SEQ=%lu STATE=%s Z1=%s Z2=%s ACTION=%s REASON=%s SAMPLE_T_US=%llu DECISION_T_US=%llu\r\n",
                     static_cast<unsigned long>(latestDecision.sequence),
+                    toString(latestDecision.systemState),
                     toString(latestDecision.zone1Level),
                     toString(latestDecision.zone2Level),
                     toString(latestDecision.requestedAction),
-                    static_cast<unsigned long>(latestDecision.sampleTimestampMs),
-                    static_cast<unsigned long>(
-                        latestDecision.decisionTimestampMs));
+                    toString(latestDecision.reason),
+                    static_cast<unsigned long long>(
+                        latestDecision.sampleTimestampUs),
+                    static_cast<unsigned long long>(
+                        latestDecision.decisionTimestampUs));
     }
 
     vTaskDelayUntil(&lastWake, DIAGNOSTICS_PERIOD);

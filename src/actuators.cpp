@@ -5,6 +5,8 @@
 #include "config.h"
 #include "system_types.h"
 
+#include <esp_timer.h>
+
 namespace sigas {
 namespace {
 
@@ -37,6 +39,8 @@ void configureActuatorOutputs() {
 void taskActuator(void *parameters) {
   auto *context = static_cast<ActuatorTaskContext *>(parameters);
   ActuatorCommand command{};
+  RequestedAction lastAction = RequestedAction::kNormal;
+  bool hasCommand = false;
   bool buzzerStarted = false;
 
   Serial.println("[TASK][TaskActuator] CREATED");
@@ -58,13 +62,20 @@ void taskActuator(void *parameters) {
       stopBuzzer(buzzerStarted);
     }
 
-    Serial.printf("[ACTUATOR] ACTION=%s VALVE=%s BUZZER=%s GREEN=%s RED=%s SEQ=%lu\r\n",
-                  toString(command.action),
-                  command.valveAngle == VALVE_CLOSED_ANGLE ? "CLOSED" : "OPEN",
-                  command.buzzerOn ? "ON" : "OFF",
-                  command.greenLedOn ? "ON" : "OFF",
-                  command.redLedOn ? "ON" : "OFF",
-                  static_cast<unsigned long>(command.sequence));
+    const uint64_t receivedUs = static_cast<uint64_t>(esp_timer_get_time());
+    if (!hasCommand || command.action != lastAction) {
+      Serial.printf("[ACTUATOR] ACTION=%s VALVE=%s BUZZER=%s GREEN=%s RED=%s SEQ=%lu T_ACTUATOR_RECEIVED=%llu\r\n",
+                    toString(command.action),
+                    command.valveAngle == VALVE_CLOSED_ANGLE ? "CLOSED"
+                                                             : "OPEN",
+                    command.buzzerOn ? "ON" : "OFF",
+                    command.greenLedOn ? "ON" : "OFF",
+                    command.redLedOn ? "ON" : "OFF",
+                    static_cast<unsigned long>(command.sequence),
+                    static_cast<unsigned long long>(receivedUs));
+    }
+    lastAction = command.action;
+    hasCommand = true;
   }
 }
 

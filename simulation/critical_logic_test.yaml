@@ -1,0 +1,107 @@
+name: "SIGAS-RT critical logic test"
+version: 1
+author: "SIGAS-RT"
+steps:
+  - set-control:
+      part-id: resetBtn
+      control: pressed
+      value: 0
+  - set-control:
+      part-id: adcStimZ1
+      control: position
+      value: 0.1
+  - set-control:
+      part-id: adcStimZ2
+      control: position
+      value: 0.1
+  - wait-serial: "[BOOT][SIGAS-RT] FreeRTOS integration mode iniciado"
+  - wait-serial: "STATE=SYSTEM_NORMAL Z1=NORMAL Z2=NORMAL ACTION=NORMAL"
+
+  - set-control:
+      part-id: adcStimZ1
+      control: position
+      value: 0.5
+  - delay: 700ms
+  - wait-serial: "STATE=SYSTEM_WARNING Z1=WARNING Z2=NORMAL ACTION=WARNING"
+  - set-control:
+      part-id: adcStimZ1
+      control: position
+      value: 0.3
+  - delay: 700ms
+  - wait-serial: "STATE=SYSTEM_WARNING Z1=WARNING Z2=NORMAL ACTION=WARNING"
+  - set-control:
+      part-id: adcStimZ1
+      control: position
+      value: 0.1
+  - delay: 700ms
+  - wait-serial: "STATE=SYSTEM_NORMAL Z1=NORMAL Z2=NORMAL ACTION=NORMAL"
+
+  - set-control:
+      part-id: adcStimZ1
+      control: position
+      value: 0.9
+  - wait-serial: "[SAFETY] T_FIRST_HIGH="
+  - wait-serial: "[SAFETY] HIGH candidate z1=1/3 z2=0/3"
+  - wait-serial: "[SAFETY] HIGH confirmed z1=3/3 z2=0/3"
+  - wait-serial: "[SAFETY] T_CRITICAL_CONFIRMED="
+  - wait-serial: "[SAFETY] T_COMMAND_SENT="
+  - wait-serial: "[STATE] SYSTEM_WARNING -> SYSTEM_CRITICAL REASON=CRITICAL_CONFIRMED"
+  - wait-serial: "[STATE] SYSTEM_CRITICAL -> SYSTEM_SAFE_LATCHED REASON=SAFE_CLOSE_REQUESTED"
+  - wait-serial: "[ACTUATOR] ACTION=SAFE_CLOSE VALVE=CLOSED BUZZER=ON GREEN=OFF RED=ON"
+  - wait-serial: "T_ACTUATOR_RECEIVED="
+
+  - set-control:
+      part-id: adcStimZ1
+      control: position
+      value: 0.1
+  - delay: 900ms
+  - wait-serial: "STATE=SYSTEM_SAFE_LATCHED Z1=NORMAL Z2=NORMAL ACTION=SAFE_CLOSE"
+
+  - set-control:
+      part-id: adcStimZ2
+      control: position
+      value: 0.9
+  - delay: 400ms
+  - set-control:
+      part-id: resetBtn
+      control: pressed
+      value: 1
+  - wait-serial: "[RESET] requested"
+  - wait-serial: "[RESET] rejected unsafe conditions"
+  - wait-serial: "[STATE] remains SYSTEM_SAFE_LATCHED"
+  - wait-serial: "STATE=SYSTEM_SAFE_LATCHED Z1=NORMAL Z2=HIGH ACTION=SAFE_CLOSE"
+  - set-control:
+      part-id: resetBtn
+      control: pressed
+      value: 0
+
+  - set-control:
+      part-id: adcStimZ2
+      control: position
+      value: 0.1
+  - wait-serial: "[SAFETY] conditions safe"
+  - set-control:
+      part-id: resetBtn
+      control: pressed
+      value: 1
+  - wait-serial: "[RESET] requested"
+  - wait-serial: "[RESET] conditions verified SAFE"
+  - wait-serial: "[STATE] SYSTEM_SAFE_LATCHED -> SYSTEM_NORMAL REASON=RESET_ACCEPTED"
+  - wait-serial: "[ACTUATOR] ACTION=NORMAL VALVE=OPEN BUZZER=OFF GREEN=ON RED=OFF"
+  - set-control:
+      part-id: resetBtn
+      control: pressed
+      value: 0
+
+  - set-control:
+      part-id: adcStimZ2
+      control: position
+      value: 0.9
+  - wait-serial: "[SAFETY] HIGH confirmed z1=0/3 z2=3/3"
+  - wait-serial: "STATE=SYSTEM_SAFE_LATCHED Z1=NORMAL Z2=HIGH ACTION=SAFE_CLOSE"
+  - set-control:
+      part-id: adcStimZ1
+      control: position
+      value: 0.9
+  - delay: 700ms
+  - wait-serial: "STATE=SYSTEM_SAFE_LATCHED Z1=HIGH Z2=HIGH ACTION=SAFE_CLOSE"

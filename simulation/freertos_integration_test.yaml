@@ -24,7 +24,6 @@ steps:
   - wait-serial: "Z1=410 Z2=410"
   - wait-serial: "[SAFETY] SEQ="
   - wait-serial: "Z1=NORMAL Z2=NORMAL ACTION=NORMAL"
-  - wait-serial: "[ACTUATOR] ACTION=NORMAL VALVE=OPEN BUZZER=OFF GREEN=ON RED=OFF"
 
   - set-control:
       part-id: adcStimZ1
@@ -63,7 +62,6 @@ steps:
   - wait-serial: "Z1=3686 Z2=410"
   - wait-serial: "[SAFETY] SEQ="
   - wait-serial: "Z1=HIGH Z2=NORMAL ACTION=SAFE_CLOSE"
-  - wait-serial: "[ACTUATOR] ACTION=SAFE_CLOSE VALVE=CLOSED BUZZER=ON GREEN=OFF RED=ON"
 
   - set-control:
       part-id: adcStimZ1
@@ -78,7 +76,6 @@ steps:
   - wait-serial: "Z1=410 Z2=3686"
   - wait-serial: "[SAFETY] SEQ="
   - wait-serial: "Z1=NORMAL Z2=HIGH ACTION=SAFE_CLOSE"
-  - wait-serial: "[ACTUATOR] ACTION=SAFE_CLOSE VALVE=CLOSED BUZZER=ON GREEN=OFF RED=ON"
 
   - set-control:
       part-id: adcStimZ1
@@ -93,10 +90,10 @@ steps:
   - wait-serial: "Z1=3686 Z2=3686"
   - wait-serial: "[SAFETY] SEQ="
   - wait-serial: "Z1=HIGH Z2=HIGH ACTION=SAFE_CLOSE"
-  - wait-serial: "[ACTUATOR] ACTION=SAFE_CLOSE VALVE=CLOSED BUZZER=ON GREEN=OFF RED=ON"
 
   - set-control:
       part-id: resetBtn
       control: pressed
       value: 1
-  - wait-serial: "[RESET] PRESSED"
+  - wait-serial: "[RESET] requested"
+  - wait-serial: "[RESET] rejected unsafe conditions"

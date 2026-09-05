@@ -6,12 +6,12 @@ La Fase 2 separa adquisicion, seguridad, actuacion y diagnostico. `loop()` no co
 
 | Tarea | Tipo | Periodo | Prioridad | Deadline | Funcion |
 | --- | --- | --- | --- | --- | --- |
-| `TaskSensors` | Periodica | 100 ms | 3 | 100 ms | Leer ADC Zona 1 y Zona 2, timestamp, boton y publicar una muestra consistente. |
-| `TaskSafety` | Evento con timeout | Cola con timeout 50 ms | 4 | No medido formalmente en este bloque | Clasificar muestras con umbrales experimentales Wokwi-only y emitir comando. |
-| `TaskActuator` | Evento | Inmediata al comando | 5 | No medido formalmente en este bloque | Control exclusivo de servo, buzzer, LED verde y LED rojo durante operacion normal. |
+| `TaskSensors` | Periodica | 100 ms | 3 | 100 ms | Leer ADC Zona 1 y Zona 2, timestamp monotono, boton y publicar una muestra consistente. |
+| `TaskSafety` | Evento con timeout | Cola con timeout 50 ms | 4 | RT-03 pendiente de analisis formal | Clasificar, aplicar histeresis, confirmar condicion critica, enclavar estado seguro y validar rearme. |
+| `TaskActuator` | Evento | Inmediata al comando | 5 | RT-03 pendiente de analisis formal | Control exclusivo de servo, buzzer, LED verde y LED rojo durante operacion normal. |
 | `TaskDiagnostics` | Periodica | 500 ms | 1 | No critico | Enviar por Serial muestras, decisiones, timestamps y estado de boton. |
 
-`TaskIndicators` queda absorbida por `TaskActuator` en este bloque para cumplir una regla simple: durante operacion normal, una sola tarea controla todos los actuadores fisicos. Si mas adelante se separan indicadores no criticos, deberan recibir estado sin tocar directamente el cierre seguro.
+`TaskIndicators` queda absorbida por `TaskActuator` para cumplir una regla simple: durante operacion normal, una sola tarea controla todos los actuadores fisicos. Si mas adelante se separan indicadores no criticos, deberan recibir estado sin tocar directamente el cierre seguro.
 
 ## Prioridades
 
@@ -25,8 +25,10 @@ La Fase 2 separa adquisicion, seguridad, actuacion y diagnostico. `loop()` no co
 La prioridad relativa implementada es:
 
 ```text
-TaskActuator / TaskSafety > TaskSensors > TaskDiagnostics
+TaskActuator > TaskSafety > TaskSensors > TaskDiagnostics
 ```
+
+`TaskActuator` tiene prioridad maxima para aplicar el comando de cierre ya calculado. `TaskSafety` queda por encima de adquisicion y diagnostico para procesar muestras recibidas sin depender de salidas no criticas.
 
 ## Comunicacion entre tareas
 
@@ -53,60 +55,59 @@ for (;;) {
 
 `TaskDiagnostics` tambien usa `vTaskDelayUntil()` para limitar la carga del Serial Monitor. `TaskSafety` y `TaskActuator` bloquean sobre colas FreeRTOS; no hacen busy waiting.
 
-## Estados logicos de integracion
+## Estados criticos implementados
 
 | Estado | Descripcion | Salidas |
 | --- | --- | --- |
-| `NORMAL` | Ambas zonas bajo umbral experimental seguro. | Valvula abierta, LED verde ON, LED rojo OFF, buzzer OFF. |
-| `WARNING` | Al menos una zona supera el umbral experimental de advertencia. | Valvula abierta, LED verde ON, LED rojo ON, buzzer OFF. |
-| `HIGH` / `SAFE_CLOSE` | Al menos una zona supera el umbral alto experimental. | Orden de cierre, buzzer ON, LED rojo ON, LED verde OFF. |
+| `SYSTEM_NORMAL` | Ambas zonas bajo condicion de advertencia. | Valvula abierta, LED verde ON, LED rojo OFF, buzzer OFF. |
+| `SYSTEM_WARNING` | Al menos una zona en advertencia o una condicion alta aun no confirmada. | Valvula abierta, LED verde ON, LED rojo ON, buzzer OFF. |
+| `SYSTEM_CRITICAL` | Condicion alta confirmada por N muestras consecutivas. | Orden inmediata de cierre seguro. |
+| `SYSTEM_SAFE_LATCHED` | Estado seguro enclavado despues de condicion critica. | Valvula cerrada, buzzer ON, LED rojo ON, LED verde OFF. |
+| `SYSTEM_FAULT` | Falla detectada, por ejemplo timeout de datos de sensor. | Valvula cerrada, buzzer ON, LED rojo ON, LED verde OFF. |
 
 ## Clasificacion experimental implementada
 
-Este bloque no implementa confirmacion final por N muestras, filtrado ni histeresis. La clasificacion usada solo integra el flujo concurrente:
+Los umbrales son `SIMULATION_ONLY` y no representan ppm certificados:
 
-| Nivel | Condicion Wokwi-only |
-| --- | --- |
-| `NORMAL` | ADC menor que `ADC_WARNING_THRESHOLD_SIMULATION_ONLY`. |
-| `WARNING` | ADC mayor o igual que `ADC_WARNING_THRESHOLD_SIMULATION_ONLY` y menor que `ADC_HIGH_THRESHOLD_SIMULATION_ONLY`. |
-| `HIGH` | ADC mayor o igual que `ADC_HIGH_THRESHOLD_SIMULATION_ONLY`. |
+| Constante | Valor | Uso |
+| --- | --- | --- |
+| `ADC_WARNING_ENTER_SIMULATION_ONLY` | 1400 | Entrada a advertencia. |
+| `ADC_WARNING_EXIT_SIMULATION_ONLY` | 1000 | Salida de advertencia por histeresis. |
+| `ADC_CRITICAL_SIMULATION_ONLY` | 3000 | Candidato critico. |
+| `ADC_SAFE_EXIT_SIMULATION_ONLY` | 1000 | Condicion segura para rearme. |
 
 Con los valores observados en Wokwi, 410 clasifica como `NORMAL`, 2048 como `WARNING` y 3686 como `HIGH`.
 
-Cuando aparece `HIGH`, `TaskSafety` emite `SAFE_CLOSE` y mantiene el cierre enclavado de forma experimental. El boton se detecta y registra, pero la politica final de rearme queda pendiente.
+## Confirmacion y enclavamiento
 
-## Estrategia de confirmacion futura
+La condicion critica requiere `CRITICAL_CONFIRMATION_SAMPLES = 3` muestras consecutivas altas en cualquiera de las dos zonas. Con periodo de sensores de 100 ms, la confirmacion ocurre aproximadamente 300 ms despues del inicio de una fuga sostenida simulada.
 
-Estrategia seleccionada para el siguiente bloque: N muestras consecutivas por zona.
+Un pico aislado no cierra la valvula: el contador vuelve a cero si la zona deja de estar alta antes de llegar a 3 muestras. Al confirmar, `TaskSafety` registra `T_FIRST_HIGH`, `T_CRITICAL_CONFIRMED` y `T_COMMAND_SENT`, envia `SAFE_CLOSE` y pasa a `SYSTEM_SAFE_LATCHED`.
 
-Propuesta:
+El sistema no reabre automaticamente aunque ambas zonas vuelvan a normal. El rearme manual solo se acepta cuando:
 
-- umbral critico experimental: definido en `include/config.h`;
-- contador independiente por zona;
-- condicion critica confirmada si cualquier zona acumula 3 muestras consecutivas sobre umbral;
-- contador se reduce o reinicia cuando la zona cae bajo umbral seguro experimental;
-- no reapertura automatica despues de bloqueo.
+- ambas zonas cumplen `ADC_SAFE_EXIT_SIMULATION_ONLY`;
+- existen `SAFE_RESET_CONFIRMATION_SAMPLES = 3` muestras seguras;
+- el boton permanece estable `RESET_DEBOUNCE_SAMPLES = 2` muestras.
 
-Justificacion:
+## Politica fail-safe
 
-- rechaza un pico aislado;
-- es facil de trazar en logs;
-- su latencia es acotada;
-- con periodo de 100 ms y 3 muestras, la confirmacion ocurre aproximadamente en 300 ms desde una fuga sostenida simulada.
+La politica implementada es cerrar ante condicion critica confirmada o falla de datos de sensor. Si `TaskSafety` deja de recibir muestras despues de haber recibido al menos una muestra valida durante `SENSOR_DATA_TIMEOUT_US = 350000`, entra en `SYSTEM_FAULT` y ordena `SAFE_CLOSE`.
 
-El deadline RT-03 no se mide formalmente en este bloque. RT-03 debe medir desde `T_detect`, momento de confirmacion, hasta `T_command`, momento en que la CPU emite la orden al actuador.
+La falla de creacion de colas o tareas se maneja en el arranque desde `src/system_app.cpp`: se imprime un error y se llama a `abort()`. No se continua una aplicacion parcialmente inicializada.
 
-## Medicion temporal futura
+## Medicion temporal
 
 Variables logicas:
 
 | Nombre | Definicion |
 | --- | --- |
-| `T_detect` | `millis()` al confirmar condicion critica. |
-| `T_command` | `millis()` al publicar orden de cierre a `TaskActuator`. |
-| `T_valve_closed` | `millis()` cuando el servo alcanza o se ordena la posicion cerrada simulada, segun capacidad de medicion. |
-| `ResponseTimeSoftware` | `T_command - T_detect`. |
-| `ResponseTimeTotal` | `T_valve_closed - T_detect`. |
+| `T_FIRST_HIGH` | Timestamp monotono en microsegundos de la primera muestra alta candidata. |
+| `T_CRITICAL_CONFIRMED` | Timestamp monotono en microsegundos al confirmar condicion critica. |
+| `T_COMMAND_SENT` | Timestamp monotono en microsegundos al publicar orden de cierre a `TaskActuator`. |
+| `T_ACTUATOR_RECEIVED` | Timestamp monotono en microsegundos al recibir el comando en `TaskActuator`. |
+| `ResponseTimeSoftware` | `T_COMMAND_SENT - T_CRITICAL_CONFIRMED`. |
+| `ResponseTimeActuatorQueue` | `T_ACTUATOR_RECEIVED - T_COMMAND_SENT`. |
 
 No se debe mezclar la orden al actuador con el movimiento fisico completo del actuador. En simulacion, el servo representa una valvula academica, no una valvula certificada.
 
