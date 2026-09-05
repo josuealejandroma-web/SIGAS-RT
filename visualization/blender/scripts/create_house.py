@@ -1,8 +1,7 @@
 import bpy
-from mathutils import Vector
 
 
-def cube(name, location, scale, mat, collection=None):
+def cube(name, location, scale, mat, collection=None, bevel=0.015):
     bpy.ops.mesh.primitive_cube_add(size=1, location=location)
     obj = bpy.context.object
     obj.name = name
@@ -10,6 +9,11 @@ def cube(name, location, scale, mat, collection=None):
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     if mat:
         obj.data.materials.append(mat)
+    if bevel > 0:
+        modifier = obj.modifiers.new(name="SIGAS_Bevel", type="BEVEL")
+        modifier.width = bevel
+        modifier.segments = 2
+        obj.modifiers.new(name="SIGAS_WeightedNormals", type="WEIGHTED_NORMAL")
     if collection:
         move_to_collection(obj, collection)
     return obj
@@ -21,6 +25,10 @@ def cylinder(name, location, radius, depth, mat, rotation=(0, 0, 0), vertices=32
     obj.name = name
     if mat:
         obj.data.materials.append(mat)
+    try:
+        bpy.ops.object.shade_smooth()
+    except RuntimeError:
+        pass
     if collection:
         move_to_collection(obj, collection)
     return obj
@@ -28,6 +36,36 @@ def cylinder(name, location, radius, depth, mat, rotation=(0, 0, 0), vertices=32
 
 def sphere(name, location, radius, mat, collection=None):
     bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=radius, location=location)
+    obj = bpy.context.object
+    obj.name = name
+    if mat:
+        obj.data.materials.append(mat)
+    try:
+        bpy.ops.object.shade_smooth()
+    except RuntimeError:
+        pass
+    if collection:
+        move_to_collection(obj, collection)
+    return obj
+
+
+def cone(name, location, radius1, radius2, depth, mat, rotation=(0, 0, 0), vertices=32, collection=None):
+    bpy.ops.mesh.primitive_cone_add(vertices=vertices, radius1=radius1, radius2=radius2, depth=depth, location=location, rotation=rotation)
+    obj = bpy.context.object
+    obj.name = name
+    if mat:
+        obj.data.materials.append(mat)
+    try:
+        bpy.ops.object.shade_smooth()
+    except RuntimeError:
+        pass
+    if collection:
+        move_to_collection(obj, collection)
+    return obj
+
+
+def torus(name, location, major_radius, minor_radius, mat, rotation=(0, 0, 0), collection=None):
+    bpy.ops.mesh.primitive_torus_add(major_radius=major_radius, minor_radius=minor_radius, major_segments=48, minor_segments=12, location=location, rotation=rotation)
     obj = bpy.context.object
     obj.name = name
     if mat:
@@ -116,10 +154,13 @@ def make_collection(name):
 
 def add_window(name, x, y, z, wall_side, mats, collection):
     if wall_side in ("front", "back"):
-        frame = cube(name + "_Frame", (x, y, z), (1.05, 0.08, 0.85), mats["frame"], collection)
+        frame = cube(name + "_Frame", (x, y, z), (1.18, 0.10, 0.95), mats["frame"], collection)
         glass = cube(name, (x, y + (0.01 if wall_side == "front" else -0.01), z), (0.82, 0.04, 0.62), mats["glass"], collection)
+        cube(name + "_Mullion_V", (x, y + (0.03 if wall_side == "front" else -0.03), z), (0.05, 0.08, 0.78), mats["frame"], collection)
+        cube(name + "_Mullion_H", (x, y + (0.03 if wall_side == "front" else -0.03), z), (0.92, 0.08, 0.05), mats["frame"], collection)
+        cube(name + "_Sill", (x, y, z - 0.52), (1.28, 0.18, 0.08), mats["wood"], collection)
     else:
-        frame = cube(name + "_Frame", (x, y, z), (0.08, 1.05, 0.85), mats["frame"], collection)
+        frame = cube(name + "_Frame", (x, y, z), (0.10, 1.18, 0.95), mats["frame"], collection)
         glass = cube(name, (x, y, z), (0.04, 0.82, 0.62), mats["glass"], collection)
     return frame, glass
 
@@ -135,6 +176,10 @@ def create_house_shell(mats):
     cube("SIGAS_Garden", (0, -0.04, 0), (15.5, 0.08, 11.5), mats["garden"], garden)
     cube("SIGAS_Driveway", (5.2, 0.01, 2.8), (2.4, 0.04, 4.8), mats["floor"], garden)
     cube("SIGAS_Entry_Path", (0, 0.02, 5.0), (2.0, 0.04, 2.0), mats["floor"], garden)
+    cube("SIGAS_Front_Planter_Left", (-3.2, 0.08, 4.55), (1.8, 0.22, 0.55), mats["wood"], garden)
+    cube("SIGAS_Front_Planter_Right", (3.2, 0.08, 4.55), (1.8, 0.22, 0.55), mats["wood"], garden)
+    cube("SIGAS_Garden_Shrub_Left", (-3.2, 0.32, 4.55), (1.45, 0.36, 0.38), mats["garden"], garden)
+    cube("SIGAS_Garden_Shrub_Right", (3.2, 0.32, 4.55), (1.45, 0.36, 0.38), mats["garden"], garden)
 
     cube("SIGAS_Ground_Slab", (0, 0.04, 0), (10.2, 0.12, 7.2), mats["floor"], ground)
     cube("SIGAS_Upper_Slab", (0, 3.05, 0), (10.2, 0.14, 7.2), mats["wood"], upper)
@@ -150,6 +195,9 @@ def create_house_shell(mats):
     cube("SIGAS_InteriorWall_Service", (1.7, 1.55, -1.25), (0.12, 3.0, 4.65), mats["upper_wall"], shell)
     cube("SIGAS_InteriorWall_Kitchen", (-1.6, 1.55, -0.4), (0.12, 3.0, 6.0), mats["upper_wall"], shell)
     cube("SIGAS_InteriorWall_Bath", (3.45, 1.55, 1.0), (3.2, 3.0, 0.12), mats["upper_wall"], shell)
+    cube("SIGAS_Facade_Wood_Panel_Left", (-4.35, 1.65, 3.70), (0.75, 2.65, 0.08), mats["wood"], shell)
+    cube("SIGAS_Facade_Wood_Panel_Right", (4.25, 1.65, 3.70), (0.75, 2.65, 0.08), mats["wood"], shell)
+    cube("SIGAS_Facade_Canopy", (3.7, 2.35, 3.95), (2.0, 0.16, 0.72), mats["frame"], shell)
 
     cube("SIGAS_FrontWall_Upper", (0, 4.45, 3.6), (10.2, 2.7, 0.14), mats["upper_wall"], shell)
     cube("SIGAS_BackWall_Upper", (0, 4.45, -3.6), (10.2, 2.7, 0.14), mats["upper_wall"], shell)
@@ -159,15 +207,23 @@ def create_house_shell(mats):
     cube("SIGAS_Bedroom_Divider", (-2.5, 4.45, 0.8), (5.0, 2.7, 0.12), mats["upper_wall"], shell)
     cube("SIGAS_Bathroom_Upper_Wall", (2.6, 4.45, -0.8), (0.12, 2.7, 3.9), mats["upper_wall"], shell)
     cube("SIGAS_Balcony", (0, 3.55, 4.25), (4.2, 0.18, 1.25), mats["wood"], upper)
-    cube("SIGAS_Balcony_Rail", (0, 4.0, 4.85), (4.4, 0.7, 0.08), mats["frame"], upper)
+    cube("SIGAS_Balcony_Rail_Top", (0, 4.05, 4.85), (4.4, 0.08, 0.08), mats["frame"], upper)
+    for i in range(9):
+        cube(f"SIGAS_Balcony_Rail_Post_{i + 1}", (-2.0 + i * 0.5, 3.75, 4.85), (0.06, 0.65, 0.06), mats["frame"], upper)
 
     gabled_roof("SIGAS_Roof_Main", (0, 5.82, 0), (11.1, 0.3, 8.2), 1.15, mats["roof"], roof)
+    cube("SIGAS_Roof_Ridge", (0, 7.02, 0), (11.35, 0.10, 0.12), mats["frame"], roof)
+    cube("SIGAS_Roof_Gutter_Front", (0, 5.72, 4.22), (11.35, 0.12, 0.12), mats["metal"], roof)
+    cube("SIGAS_Roof_Gutter_Back", (0, 5.72, -4.22), (11.35, 0.12, 0.12), mats["metal"], roof)
     cube("SIGAS_Dormer_Left", (-2.8, 6.18, 3.15), (1.35, 0.85, 1.05), mats["upper_wall"], roof)
     cube("SIGAS_Dormer_Right", (2.8, 6.18, 3.15), (1.35, 0.85, 1.05), mats["upper_wall"], roof)
     gabled_roof("SIGAS_Dormer_Left_Roof", (-2.8, 6.65, 3.15), (1.6, 0.2, 1.25), 0.35, mats["roof"], roof)
     gabled_roof("SIGAS_Dormer_Right_Roof", (2.8, 6.65, 3.15), (1.6, 0.2, 1.25), 0.35, mats["roof"], roof)
+    add_window("SIGAS_Dormer_Left_Window", -2.8, 3.82, 5.98, "front", mats, roof)
+    add_window("SIGAS_Dormer_Right_Window", 2.8, 3.82, 5.98, "front", mats, roof)
 
     cube("SIGAS_MainDoor", (4.95, 1.1, 2.05), (0.12, 2.2, 1.1), mats["wood"], ground)
+    cube("SIGAS_MainDoor_Handle", (4.86, 1.16, 2.35), (0.04, 0.08, 0.10), mats["metal"], ground)
     add_window("SIGAS_Window_Kitchen", -3.3, 3.63, 1.75, "front", mats, shell)
     add_window("SIGAS_Window_Living", -0.4, 3.63, 1.8, "front", mats, shell)
     add_window("SIGAS_Window_Technical", 3.3, -3.63, 1.75, "back", mats, shell)

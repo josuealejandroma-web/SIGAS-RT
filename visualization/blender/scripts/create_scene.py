@@ -39,14 +39,25 @@ def add_lighting():
     bpy.ops.object.light_add(type="SUN", location=(0, 8, 6))
     sun = bpy.context.object
     sun.name = "SIGAS_Sun"
-    sun.data.energy = 2.2
+    sun.data.energy = 1.65
     sun.rotation_euler = (0.85, 0.0, -0.65)
 
     bpy.ops.object.light_add(type="AREA", location=(0, 5.8, 3.5))
     area = bpy.context.object
     area.name = "SIGAS_AreaLight_Interior"
-    area.data.energy = 380
+    area.data.energy = 520
     area.data.size = 6.5
+
+    for name, location, energy in (
+        ("SIGAS_WarmLight_Kitchen", (-3.4, 2.35, -2.1), 95),
+        ("SIGAS_WarmLight_Technical", (3.2, 2.25, -2.4), 85),
+        ("SIGAS_WarmLight_ControlPanel", (0.2, 2.05, 2.5), 70),
+    ):
+        bpy.ops.object.light_add(type="POINT", location=location)
+        light = bpy.context.object
+        light.name = name
+        light.data.energy = energy
+        light.data.color = (1.0, 0.83, 0.58)
 
 
 def add_camera():
@@ -55,7 +66,7 @@ def add_camera():
     camera.name = "SIGAS_Camera_Overview"
     direction = Vector((0.0, 2.6, 0.2)) - camera.location
     camera.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
-    camera.data.lens = 22
+    camera.data.lens = 23
     bpy.context.scene.camera = camera
 
 
