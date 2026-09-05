@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "commands": {
+    "RUN_SAFE": {
+      "label": "Seguro",
+      "scenario": "hardware_smoke_test.yaml",
+      "description": "Arranque, sensores normales y salidas seguras."
+    },
+    "RUN_ZONE1_LEAK": {
+      "label": "Fuga Zona 1",
+      "scenario": "timing_test.yaml",
+      "description": "Fuga sostenida en Zona 1 hasta cierre seguro."
+    },
+    "RUN_ZONE2_LEAK": {
+      "label": "Fuga Zona 2",
+      "scenario": "timing_zone2_test.yaml",
+      "description": "Fuga sostenida en Zona 2 hasta cierre seguro."
+    },
+    "RUN_BOTH_LEAK": {
+      "label": "Fuga doble",
+      "scenario": "timing_both_test.yaml",
+      "description": "Fuga simultanea en ambas zonas."
+    },
+    "RUN_FALSE_POSITIVE": {
+      "label": "Falso positivo",
+      "scenario": "critical_logic_spike_test.yaml",
+      "description": "Pico transitorio que no debe cerrar por condicion critica."
+    },
+    "RUN_SENSOR_TIMEOUT": {
+      "label": "Timeout sensor",
+      "scenario": "sensor_timeout_test.yaml",
+      "description": "Perdida de datos de sensor despues de una muestra valida."
+    },
+    "RUN_INITIAL_TIMEOUT": {
+      "label": "Timeout inicial",
+      "scenario": "initial_sensor_timeout_test.yaml",
+      "description": "Ausencia de primera muestra durante el arranque."
+    }
+  }
+}
