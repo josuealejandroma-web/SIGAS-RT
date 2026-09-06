@@ -1,9 +1,24 @@
-[gd_scene load_steps=5 format=3 uid="uid://sigasrt_main"]
+[gd_scene load_steps=11 format=3 uid="uid://sigasrt_main"]
 
 [ext_resource type="Script" path="res://scripts/Main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/DigitalTwin.gd" id="2_twin"]
 [ext_resource type="Script" path="res://scripts/OrbitCamera.gd" id="3_camera"]
 [ext_resource type="Script" path="res://scripts/Hud.gd" id="4_hud"]
+[ext_resource type="Script" path="res://scripts/FreeWalkController.gd" id="5_walk"]
+[ext_resource type="Script" path="res://scripts/NavigationCollisionBuilder.gd" id="6_navigation"]
+[ext_resource type="Script" path="res://scripts/InteractiveLabels.gd" id="7_labels"]
+[ext_resource type="Script" path="res://scripts/PresentationController.gd" id="8_presentation"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_walk"]
+radius = 0.32
+height = 1.75
+
+[sub_resource type="Environment" id="Environment_main"]
+background_mode = 1
+background_color = Color(0.055, 0.07, 0.08, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.62, 0.68, 0.72, 1)
+ambient_light_energy = 0.75
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_main")
@@ -15,13 +30,48 @@ script = ExtResource("2_twin")
 script = ExtResource("3_camera")
 
 [node name="Camera3D" type="Camera3D" parent="CameraRig"]
+
+[node name="NavigationWorld" type="Node3D" parent="."]
+script = ExtResource("6_navigation")
+
+[node name="FreeWalk" type="CharacterBody3D" parent="."]
+collision_layer = 2
+collision_mask = 1
+safe_margin = 0.04
+script = ExtResource("5_walk")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="FreeWalk"]
+position = Vector3(0, 0.875, 0)
+shape = SubResource("CapsuleShape3D_walk")
+
+[node name="Head" type="Node3D" parent="FreeWalk"]
+position = Vector3(0, 1.7, 0)
+
+[node name="Camera3D" type="Camera3D" parent="FreeWalk/Head"]
 current = true
-transform = Transform3D(1, 0, 0, 0, 0.906308, 0.422618, 0, -0.422618, 0.906308, 0, 8, 13)
+fov = 78.0
+near = 0.08
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_main")
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.707107, -0.353553, 0.612372, 0, 0.866025, 0.5, -0.707107, -0.353553, 0.612372, 0, 10, 0)
-light_energy = 2.2
+light_energy = 1.15
 shadow_enabled = true
+
+[node name="InteriorFill" type="OmniLight3D" parent="."]
+position = Vector3(0, 4.65, 0)
+light_color = Color(0.82, 0.9, 1, 1)
+light_energy = 1.35
+omni_range = 10.0
+shadow_enabled = false
 
 [node name="Hud" type="CanvasLayer" parent="."]
 script = ExtResource("4_hud")
+
+[node name="InteractiveLabels" type="CanvasLayer" parent="."]
+script = ExtResource("7_labels")
+
+[node name="PresentationController" type="CanvasLayer" parent="."]
+script = ExtResource("8_presentation")

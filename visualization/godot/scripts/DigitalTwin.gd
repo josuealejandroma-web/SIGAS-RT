@@ -67,7 +67,7 @@ func set_technical_view(enabled: bool) -> void:
 	if house:
 		for node in _all_nodes(house):
 			if node.name.contains("Helper") and node is MeshInstance3D:
-				node.visible = enabled
+				node.visible = false
 
 
 func focus_position(name: String) -> Vector3:
@@ -75,6 +75,22 @@ func focus_position(name: String) -> Vector3:
 	if node is Node3D:
 		return node.global_position
 	return Vector3.ZERO
+
+
+func component_node(name: String) -> Node3D:
+	var node := _find_node(name)
+	if node is Node3D:
+		return node
+	return null
+
+
+func component_position(name: String) -> Vector3:
+	var node := component_node(name)
+	return node.global_position if node else Vector3.ZERO
+
+
+func is_technical_view() -> bool:
+	return technical_view
 
 
 func _load_blender_house() -> void:
@@ -100,10 +116,30 @@ func _bind_exported_nodes() -> void:
 	leak_z2 = _mesh("SIGAS_LeakPoint_Z2")
 	cutaway_nodes = []
 	for node in _all_nodes(house):
-		if node is Node3D and (node.name.contains("Wall") or node.name.contains("Roof")):
+		if node is Node3D and _hide_in_technical_view(str(node.name)):
 			cutaway_nodes.append(node)
 		if node is MeshInstance3D and node.name.contains("Helper"):
 			node.material_override = status_materials["cutaway"]
+
+
+func _hide_in_technical_view(node_name: String) -> bool:
+	if node_name.contains("Wall") or node_name.contains("Roof"):
+		return true
+	for prefix in [
+		"SIGAS_Upper_Slab",
+		"SIGAS_Bedroom_",
+		"SIGAS_Master",
+		"SIGAS_Bathroom_2",
+		"SIGAS_Upper_Bath_",
+		"SIGAS_UpperHall",
+		"SIGAS_Balcony",
+		"SIGAS_Terrace_",
+		"SIGAS_Dormer_",
+		"SIGAS_Window_Bedroom_"
+	]:
+		if node_name.begins_with(prefix):
+			return true
+	return false
 
 
 func _create_gas_clouds() -> void:
