@@ -16,7 +16,7 @@ Sensor -> ADC -> CPU -> Procesamiento tiempo real -> Actuador
 | --- | --- | --- |
 | Blender | `visualization/blender/` | Fuente reproducible de casa, tuberias, sensores, valvulas y componentes fisicos. |
 | GLB | `visualization/godot/models/sigas_house.glb` | Modelo maestro importado por Godot. |
-| Godot 4 | `visualization/godot/` | Render 3D, HUD, camara orbital, vista tecnica y botones de escenarios. |
+| Godot 4 | `visualization/godot/` | Render 3D, exploracion libre, tour orbital, HUD, vista tecnica y botones de escenarios. |
 | Bridge Python | `visualization/bridge/` | Ejecutar escenarios Wokwi permitidos y reenviar telemetria por UDP local. |
 | Catalogo | `visualization/scenarios/` | Lista de comandos y metadatos visuales. |
 | Firmware | `src/diagnostics.cpp` | Emision opcional `@SIGAS` bajo `SIGAS_RT_VISUALIZATION`. |
@@ -26,6 +26,15 @@ Sensor -> ADC -> CPU -> Procesamiento tiempo real -> Actuador
 El modelo Blender representa una vivienda seccionada de dos pisos con fachada, cubierta, mobiliario interior, cocina, area tecnica y gabinete de control. El sistema SIGAS-RT se mantiene visible como instalacion fisica: entrada de gas, medidor, valvula manual, valvula automatica, tuberias, soportes, sensores MQ-2, ESP32, LEDs, buzzer y puntos de fuga conceptuales.
 
 El pulido visual solo mejora legibilidad espacial, materiales, iluminacion y camaras. No modifica umbrales, tiempos, escenarios Wokwi ni comportamiento critico del firmware.
+
+## Modos de presentacion
+
+- **Tour automatico Blender:** recorrido maestro de 15 ambientes, 529 frames y aproximadamente 22 segundos en `visualization/blender/source/sigas_house.blend`.
+- **Tour Godot:** recorrido orbital compacto por puntos de interes. Complementa la presentacion, pero no reemplaza el tour interior de Blender.
+- **Exploracion libre Godot:** `CharacterBody3D`, camara a 1.70 m, movimiento WASD, mouse, velocidades normal/rapida/precisa, colisiones y accesos seguros entre zonas.
+- **Vista tecnica:** oculta cubierta, muros y planta superior seccionable para dejar visibles tuberias, sensores, medidor, valvulas y gabinete SIGAS-RT.
+
+Los controles, posiciones y recomendaciones de exposicion estan documentados en `docs/modo_presentacion.md`.
 
 ## Protocolo
 
@@ -63,6 +72,7 @@ Validacion visual en Godot:
 
 ```powershell
 tools\godot\godot.cmd --headless --path visualization\godot --script res://scripts/VisualSelfTest.gd
+tools\godot\godot.cmd --headless --path visualization\godot --script res://scripts/FreeWalkSelfTest.gd
 ```
 
 Regeneracion Blender:
@@ -79,6 +89,8 @@ tools\godot\godot.cmd --headless --path visualization\godot --import
 | Godot instalado | `4.7.2.stable.official.ed1daf0bf` en `tools/godot/` |
 | Headless | PASS con `tools\godot\godot.cmd --headless --path visualization\godot --quit` |
 | Autoinspeccion visual | PASS con `GODOT_VISUAL_SELF_TEST: PASS` |
+| Navegacion interactiva | PASS con casos `FREE-01` a `FREE-17`, colision de fachada, mueble de cocina, entrada, escalera y telemetria concurrente |
+| Captura grafica Godot | PASS a 1280x720 con Vulkan Forward+ en exterior, cocina, planta alta, dormitorio, balcon y vista tecnica |
 | Apertura grafica | PASS; Godot inicio con Vulkan Forward+ sobre Intel HD Graphics 620 |
 | Blender | PASS con Blender 5.1.0, `bpy` y exportacion GLB |
 | Casa importada | PASS; `sigas_house.glb` contiene casa de dos pisos, tuberias, sensores, medidor, valvulas, ESP32, LEDs, buzzer y markers |
@@ -91,6 +103,7 @@ tools\godot\godot.cmd --headless --path visualization\godot --import
 ## Limitaciones encontradas
 
 - Wokwi CLI mezcla anotaciones del escenario con stdout y puede fragmentar lineas JSON cuando se parsea stdout directamente. Se corrigio el bridge para leer telemetria desde `--serial-log-file` y acumular fragmentos hasta salto de linea.
-- La validacion visual interactiva desde Codex no permite inspeccionar pixeles de una ventana nativa. Se complemento con apertura grafica real y autoinspeccion Godot de nodos, materiales y estados.
+- La validacion combina autoinspeccion headless con capturas generadas por el runtime grafico; las capturas son artefactos locales ignorados por Git.
 - Godot portable se mantiene en `tools/godot/`, ignorado por Git. No se versionan binarios.
 - La casa final se genera en Blender y se importa como GLB; las esferas de gas se instancian en Godot sobre markers Blender porque son una visualizacion conceptual animada, no geometria estructural de la vivienda.
+- El GLB conserva muros continuos y una escalera visual que termina bajo la losa. Godot usa portales de proximidad en puntos seguros para completar puertas y cambio de piso sin atravesar visualmente geometria ni modificar Blender.
