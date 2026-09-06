@@ -12,6 +12,18 @@ Esta carpeta contiene el pipeline reproducible para la casa de dos pisos y el si
 
 El GLB usado por Godot queda en `visualization/godot/models/sigas_house.glb`.
 
+## Orientacion al abrir
+
+La geometria se modela con ejes compatibles con Godot (`Y` arriba) y se agrupa bajo `SIGAS_ModelRoot`, cuya rotacion la presenta con `Z` arriba en Blender. El archivo generado abre directamente en `SIGAS_Camera_Interior`, en sombreado de materiales y con la camara bloqueada a la vista; no se debe rotar la casa manualmente para exportarla.
+
+## Ver el interior
+
+La linea de tiempo ofrece un recorrido guiado de aproximadamente 22 segundos y 15 marcadores de ambiente. Presione `Espacio` para reproducir o pausar. Los marcadores permiten saltar a una habitacion concreta.
+
+Para explorar manualmente, mantenga la vista de camara activa y use orbita, desplazamiento y zoom; `Lock Camera to View` ya esta habilitado. El modo `Vista > Navegacion > Recorrer navegacion` permite desplazarse con `W`, `A`, `S` y `D`, y se cierra con `Esc`.
+
+La camara y las luces del recorrido son recursos de presentacion del `.blend`. Se crean despues de exportar el GLB y no forman parte del modelo cargado por Godot.
+
 ## Regenerar
 
 ```powershell
@@ -22,6 +34,7 @@ tools\godot\godot.cmd --headless --path visualization\godot --import
 ## Scripts
 
 - `create_scene.py`: orquestador.
+- `create_camera_tour.py`: recorrido interior, marcadores de ambiente e iluminacion de presentacion.
 - `create_materials.py`: materiales tecnicos con variacion procedural.
 - `create_house.py`: helpers geometricos, fachada, cubierta, balcon, ventanas y shell de casa.
 - `create_ground_floor.py`: planta baja, cocina, area tecnica y escaleras.
@@ -44,6 +57,7 @@ El modelo mantiene una lectura tecnica antes que fotorealista, pero agrega detal
 - sistema de gas con medidor instrumentado, valvula manual, actuador de valvula, abrazaderas, soportes y flechas de flujo;
 - gabinete de control con puerta translucida, modulo ESP32, antena, borneras y rejilla de buzzer;
 - camara general e iluminacion interior ajustadas para inspeccion visual.
+- camara interior animada y movible con marcadores para todas las zonas de la casa.
 
 ## Distribucion
 

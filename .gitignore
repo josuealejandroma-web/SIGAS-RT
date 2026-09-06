@@ -41,6 +41,7 @@ build/
 visualization/dist/
 visualization/build/
 visualization/blender/exports/preview_*.png
+visualization/blender/exports/preview_*.gif
 visualization/blender/source/*.blend1
 
 # Sistema

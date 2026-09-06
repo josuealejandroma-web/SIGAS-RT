@@ -1,3 +1,4 @@
+import math
 import sys
 from pathlib import Path
 
@@ -9,6 +10,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from create_esp32 import create_control_panel
+from create_camera_tour import create_interior_tour
 from create_gas_system import create_gas_system
 from create_ground_floor import create_ground_floor_details
 from create_house import create_house_shell, make_collection
@@ -35,23 +37,59 @@ def reset_scene():
         bpy.data.materials.remove(material)
 
 
+def point_at(obj, target):
+    direction = Vector(target) - obj.location
+    obj.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
+
+
+def orient_model_for_blender():
+    """Keep authoring coordinates Godot-compatible while displaying Z-up in Blender."""
+    bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0))
+    root = bpy.context.object
+    root.name = "SIGAS_ModelRoot"
+    root.empty_display_size = 0.8
+    root["sigas_authoring_axes"] = "X right, Y up, Z depth"
+
+    for obj in list(bpy.context.scene.objects):
+        if obj != root:
+            obj.parent = root
+
+    root.rotation_euler.x = math.radians(90.0)
+    return root
+
+
 def add_lighting():
-    bpy.ops.object.light_add(type="SUN", location=(0, 8, 6))
+    world = bpy.context.scene.world
+    world.use_nodes = True
+    background = world.node_tree.nodes.get("Background")
+    background.inputs["Color"].default_value = (0.035, 0.05, 0.07, 1.0)
+    background.inputs["Strength"].default_value = 0.35
+
+    bpy.ops.object.light_add(type="SUN", location=(6, -10, 12))
     sun = bpy.context.object
     sun.name = "SIGAS_Sun"
-    sun.data.energy = 1.65
-    sun.rotation_euler = (0.85, 0.0, -0.65)
+    sun.data.energy = 2.0
+    sun.data.angle = math.radians(18.0)
+    sun.rotation_euler = (math.radians(35.0), 0.0, math.radians(-35.0))
 
-    bpy.ops.object.light_add(type="AREA", location=(0, 5.8, 3.5))
+    bpy.ops.object.light_add(type="AREA", location=(-4.0, -6.0, 10.0))
     area = bpy.context.object
     area.name = "SIGAS_AreaLight_Interior"
-    area.data.energy = 520
-    area.data.size = 6.5
+    area.data.energy = 900
+    area.data.size = 8.0
+    point_at(area, (0.0, 0.0, 2.8))
+
+    bpy.ops.object.light_add(type="AREA", location=(7.0, 4.0, 6.5))
+    fill = bpy.context.object
+    fill.name = "SIGAS_AreaLight_Fill"
+    fill.data.energy = 450
+    fill.data.size = 5.0
+    point_at(fill, (0.0, 0.0, 2.5))
 
     for name, location, energy in (
-        ("SIGAS_WarmLight_Kitchen", (-3.4, 2.35, -2.1), 95),
-        ("SIGAS_WarmLight_Technical", (3.2, 2.25, -2.4), 85),
-        ("SIGAS_WarmLight_ControlPanel", (0.2, 2.05, 2.5), 70),
+        ("SIGAS_WarmLight_Kitchen", (-3.4, 2.1, 2.35), 95),
+        ("SIGAS_WarmLight_Technical", (3.2, 2.4, 2.25), 85),
+        ("SIGAS_WarmLight_ControlPanel", (0.2, -2.5, 2.05), 70),
     ):
         bpy.ops.object.light_add(type="POINT", location=location)
         light = bpy.context.object
@@ -61,13 +99,43 @@ def add_lighting():
 
 
 def add_camera():
-    bpy.ops.object.camera_add(location=(12.5, 9.2, 12.0), rotation=(1.04, 0.0, 0.78))
+    bpy.ops.object.camera_add(location=(14.0, -18.0, 10.5))
     camera = bpy.context.object
     camera.name = "SIGAS_Camera_Overview"
-    direction = Vector((0.0, 2.6, 0.2)) - camera.location
-    camera.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
-    camera.data.lens = 23
+    point_at(camera, (0.0, 0.0, 2.8))
+    camera.data.lens = 48
+    camera.data.display_size = 0.8
     bpy.context.scene.camera = camera
+    return camera
+
+
+def configure_presentation(camera):
+    scene = bpy.context.scene
+    scene.render.engine = "BLENDER_EEVEE"
+    scene.render.resolution_x = 1280
+    scene.render.resolution_y = 720
+    scene.render.resolution_percentage = 100
+    scene.render.image_settings.file_format = "PNG"
+    scene.view_settings.view_transform = "Filmic"
+    scene.view_settings.look = "Medium High Contrast"
+    scene.unit_settings.system = "METRIC"
+
+    bpy.ops.object.select_all(action="DESELECT")
+    camera.select_set(True)
+    bpy.context.view_layer.objects.active = camera
+
+    for screen in bpy.data.screens:
+        for area in screen.areas:
+            if area.type != "VIEW_3D":
+                continue
+            space = area.spaces.active
+            space.region_3d.view_perspective = "CAMERA"
+            space.shading.type = "MATERIAL"
+            space.lock_camera = True
+            space.overlay.show_floor = False
+            space.overlay.show_axis_x = False
+            space.overlay.show_axis_y = False
+            space.overlay.show_relationship_lines = False
 
 
 def build_scene():
@@ -90,19 +158,20 @@ def build_scene():
     create_sensors(mats, control_assets)
     create_control_panel(mats, control_assets)
     create_markers(marker_assets)
+    orient_model_for_blender()
     add_lighting()
-    add_camera()
+    camera = add_camera()
 
     bpy.context.scene.frame_start = 1
     bpy.context.scene.frame_end = 24
-    bpy.context.scene.render.engine = "BLENDER_EEVEE"
-    bpy.context.scene.view_settings.view_transform = "Filmic"
-    bpy.context.scene.view_settings.look = "Medium High Contrast"
-    bpy.context.scene.unit_settings.system = "METRIC"
+    configure_presentation(camera)
 
-    root = repo_root()
-    blend = save_blend(root)
-    glb = export_glb(root)
+    project_root = repo_root()
+    glb = export_glb(project_root)
+
+    tour_camera = create_interior_tour()
+    configure_presentation(tour_camera)
+    blend = save_blend(project_root)
     print(f"SIGAS_BLENDER_SCENE: OK blend={blend} glb={glb}")
 
 

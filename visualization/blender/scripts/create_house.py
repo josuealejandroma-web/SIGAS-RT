@@ -152,16 +152,22 @@ def make_collection(name):
     return collection
 
 
-def add_window(name, x, y, z, wall_side, mats, collection):
+def add_window(name, x, height, depth, wall_side, mats, collection):
     if wall_side in ("front", "back"):
-        frame = cube(name + "_Frame", (x, y, z), (1.18, 0.10, 0.95), mats["frame"], collection)
-        glass = cube(name, (x, y + (0.01 if wall_side == "front" else -0.01), z), (0.82, 0.04, 0.62), mats["glass"], collection)
-        cube(name + "_Mullion_V", (x, y + (0.03 if wall_side == "front" else -0.03), z), (0.05, 0.08, 0.78), mats["frame"], collection)
-        cube(name + "_Mullion_H", (x, y + (0.03 if wall_side == "front" else -0.03), z), (0.92, 0.08, 0.05), mats["frame"], collection)
-        cube(name + "_Sill", (x, y, z - 0.52), (1.28, 0.18, 0.08), mats["wood"], collection)
+        outward = 1.0 if wall_side == "front" else -1.0
+        frame_depth = depth + outward * 0.09
+        glass_depth = depth + outward * 0.16
+        frame = cube(name + "_Frame", (x, height, frame_depth), (1.18, 0.95, 0.10), mats["frame"], collection)
+        glass = cube(name, (x, height, glass_depth), (0.82, 0.62, 0.04), mats["glass"], collection)
+        cube(name + "_Mullion_V", (x, height, glass_depth + outward * 0.03), (0.05, 0.78, 0.08), mats["frame"], collection)
+        cube(name + "_Mullion_H", (x, height, glass_depth + outward * 0.03), (0.92, 0.05, 0.08), mats["frame"], collection)
+        cube(name + "_Sill", (x, height - 0.52, glass_depth), (1.28, 0.08, 0.18), mats["wood"], collection)
     else:
-        frame = cube(name + "_Frame", (x, y, z), (0.10, 1.18, 0.95), mats["frame"], collection)
-        glass = cube(name, (x, y, z), (0.04, 0.82, 0.62), mats["glass"], collection)
+        outward = 1.0 if wall_side == "right" else -1.0
+        frame_x = x + outward * 0.09
+        glass_x = x + outward * 0.16
+        frame = cube(name + "_Frame", (frame_x, height, depth), (0.10, 0.95, 1.18), mats["frame"], collection)
+        glass = cube(name, (glass_x, height, depth), (0.04, 0.62, 0.82), mats["glass"], collection)
     return frame, glass
 
 
@@ -196,7 +202,7 @@ def create_house_shell(mats):
     cube("SIGAS_InteriorWall_Kitchen", (-1.6, 1.55, -0.4), (0.12, 3.0, 6.0), mats["upper_wall"], shell)
     cube("SIGAS_InteriorWall_Bath", (3.45, 1.55, 1.0), (3.2, 3.0, 0.12), mats["upper_wall"], shell)
     cube("SIGAS_Facade_Wood_Panel_Left", (-4.35, 1.65, 3.70), (0.75, 2.65, 0.08), mats["wood"], shell)
-    cube("SIGAS_Facade_Wood_Panel_Right", (4.25, 1.65, 3.70), (0.75, 2.65, 0.08), mats["wood"], shell)
+    cube("SIGAS_Facade_Wood_Panel_Right", (4.55, 1.65, 3.70), (0.35, 2.65, 0.08), mats["wood"], shell)
     cube("SIGAS_Facade_Canopy", (3.7, 2.35, 3.95), (2.0, 0.16, 0.72), mats["frame"], shell)
 
     cube("SIGAS_FrontWall_Upper", (0, 4.45, 3.6), (10.2, 2.7, 0.14), mats["upper_wall"], shell)
@@ -219,17 +225,17 @@ def create_house_shell(mats):
     cube("SIGAS_Dormer_Right", (2.8, 6.18, 3.15), (1.35, 0.85, 1.05), mats["upper_wall"], roof)
     gabled_roof("SIGAS_Dormer_Left_Roof", (-2.8, 6.65, 3.15), (1.6, 0.2, 1.25), 0.35, mats["roof"], roof)
     gabled_roof("SIGAS_Dormer_Right_Roof", (2.8, 6.65, 3.15), (1.6, 0.2, 1.25), 0.35, mats["roof"], roof)
-    add_window("SIGAS_Dormer_Left_Window", -2.8, 3.82, 5.98, "front", mats, roof)
-    add_window("SIGAS_Dormer_Right_Window", 2.8, 3.82, 5.98, "front", mats, roof)
+    add_window("SIGAS_Dormer_Left_Window", -2.8, 5.98, 3.82, "front", mats, roof)
+    add_window("SIGAS_Dormer_Right_Window", 2.8, 5.98, 3.82, "front", mats, roof)
 
-    cube("SIGAS_MainDoor", (4.95, 1.1, 2.05), (0.12, 2.2, 1.1), mats["wood"], ground)
-    cube("SIGAS_MainDoor_Handle", (4.86, 1.16, 2.35), (0.04, 0.08, 0.10), mats["metal"], ground)
-    add_window("SIGAS_Window_Kitchen", -3.3, 3.63, 1.75, "front", mats, shell)
-    add_window("SIGAS_Window_Living", -0.4, 3.63, 1.8, "front", mats, shell)
-    add_window("SIGAS_Window_Technical", 3.3, -3.63, 1.75, "back", mats, shell)
-    add_window("SIGAS_Window_Bedroom_1", -3.2, 3.63, 4.75, "front", mats, shell)
-    add_window("SIGAS_Window_Bedroom_2", 0.0, 3.63, 4.75, "front", mats, shell)
-    add_window("SIGAS_Window_Bedroom_3", 3.1, 3.63, 4.75, "front", mats, shell)
+    cube("SIGAS_MainDoor", (3.65, 1.12, 3.70), (1.25, 2.25, 0.10), mats["wood"], ground)
+    cube("SIGAS_MainDoor_Handle", (4.05, 1.12, 3.79), (0.06, 0.12, 0.06), mats["metal"], ground)
+    add_window("SIGAS_Window_Kitchen", -3.3, 1.75, 3.63, "front", mats, shell)
+    add_window("SIGAS_Window_Living", -0.4, 1.8, 3.63, "front", mats, shell)
+    add_window("SIGAS_Window_Technical", 3.3, 1.75, -3.63, "back", mats, shell)
+    add_window("SIGAS_Window_Bedroom_1", -3.2, 4.75, 3.63, "front", mats, shell)
+    add_window("SIGAS_Window_Bedroom_2", 0.0, 4.75, 3.63, "front", mats, shell)
+    add_window("SIGAS_Window_Bedroom_3", 3.1, 4.75, 3.63, "front", mats, shell)
 
     cube("SIGAS_LivingRoom", (-3.25, 0.08, 1.6), (2.5, 0.08, 2.4), mats["wood"], ground)
     cube("SIGAS_DiningRoom", (-0.2, 0.10, 1.55), (2.0, 0.10, 1.2), mats["wood"], ground)
