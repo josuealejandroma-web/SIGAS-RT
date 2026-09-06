@@ -5,7 +5,14 @@ const REQUIRED_PATHS := [
 	"DigitalTwin/SIGAS_BlenderHouse",
 	"CameraRig",
 	"CameraRig/Camera3D",
-	"Hud"
+	"NavigationWorld",
+	"NavigationWorld/SIGAS_StaticNavigation",
+	"FreeWalk",
+	"FreeWalk/CollisionShape3D",
+	"FreeWalk/Head/Camera3D",
+	"Hud",
+	"InteractiveLabels",
+	"PresentationController"
 ]
 
 const REQUIRED_NAMES := [
@@ -120,6 +127,22 @@ func _run() -> void:
 	for view in ["exterior", "ground", "upper", "kitchen", "technical", "meter", "control", "cutaway"]:
 		camera_rig.set_view(view, twin)
 		await process_frame
+
+	var navigation = scene.get_node("NavigationWorld")
+	var free_walk = scene.get_node("FreeWalk")
+	var presentation = scene.get_node("PresentationController")
+	if not navigation.is_built() or navigation.get_collision_count() < 25:
+		push_error("Navegacion sin colisiones suficientes")
+		failed = true
+	if not presentation.is_free_mode() or not free_walk.get_camera().current:
+		push_error("La escena no conserva el modo libre como inicio")
+		failed = true
+	twin.set_technical_view(false)
+	await process_frame
+	var upper_bed = _find_by_name(twin, "SIGAS_Bedroom_3_Bed")
+	if roof == null or not roof.visible or upper_bed == null or not upper_bed.visible:
+		push_error("La vista arquitectonica no restauro techo y planta alta")
+		failed = true
 
 	if failed:
 		quit(1)

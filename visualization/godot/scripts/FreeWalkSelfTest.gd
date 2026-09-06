@@ -1,0 +1,223 @@
+extends SceneTree
+
+var _failed := false
+
+
+func _initialize() -> void:
+	call_deferred("_run")
+
+
+func _run() -> void:
+	var packed: PackedScene = load("res://scenes/Main.tscn")
+	if packed == null:
+		push_error("FREE-00: Main.tscn no carga")
+		quit(1)
+		return
+
+	var scene: Node = packed.instantiate()
+	root.add_child(scene)
+	await process_frame
+	await _wait_physics(4)
+
+	var free_walk: CharacterBody3D = scene.get_node("FreeWalk")
+	var navigation: Node3D = scene.get_node("NavigationWorld")
+	var presentation: CanvasLayer = scene.get_node("PresentationController")
+	var labels: CanvasLayer = scene.get_node("InteractiveLabels")
+	var hud: CanvasLayer = scene.get_node("Hud")
+	var twin: Node3D = scene.get_node("DigitalTwin")
+
+	_check(
+		"FREE-01",
+		presentation.is_free_mode() and free_walk.is_active() and free_walk.get_camera().current and abs(free_walk.get_eye_height() - 1.70) < 0.01,
+		"Godot no inicio en modo libre con camara humana"
+	)
+
+	free_walk.teleport_to_pose(Vector3(0.0, 0.18, 5.05), 0.0)
+	await _wait_physics(4)
+	var movement_start := free_walk.global_position
+	free_walk.set_debug_input(Vector2(1.0, 0.0))
+	await _wait_physics(20)
+	free_walk.clear_debug_input()
+	_check("FREE-02", free_walk.global_position.distance_to(movement_start) > 0.12, "WASD no produjo desplazamiento")
+	var speed_before: float = free_walk.get_walk_speed()
+	free_walk.adjust_speed(0.25)
+	var speed_changed: bool = free_walk.get_walk_speed() > speed_before
+	free_walk.adjust_speed(-0.25)
+	_check("FREE-02-SPEED", speed_changed, "La rueda no ajusta la velocidad base")
+
+	var yaw_before := free_walk.rotation.y
+	var pitch_before: float = free_walk.get_node("Head").rotation.x
+	free_walk.apply_look_delta(Vector2(80.0, -35.0))
+	_check(
+		"FREE-03",
+		abs(free_walk.rotation.y - yaw_before) > 0.05 and abs(free_walk.get_node("Head").rotation.x - pitch_before) > 0.02,
+		"El mouse no cambio yaw y pitch"
+	)
+
+	free_walk.teleport_to_pose(Vector3(0.0, 0.18, 4.55), 0.0)
+	await _wait_physics(4)
+	free_walk.set_debug_input(Vector2(0.0, -1.0), true)
+	await _wait_physics(75)
+	free_walk.clear_debug_input()
+	_check(
+		"FREE-04",
+		navigation.is_built() and navigation.get_collision_count() >= 25 and free_walk.global_position.z > 3.80,
+		"El jugador atraveso la pared exterior o faltan colliders"
+	)
+	free_walk.teleport_to_pose(Vector3(3.65, 0.16, 4.55), 0.0)
+	free_walk.set_debug_input(Vector2(0.0, -1.0))
+	await _wait_physics(26)
+	free_walk.clear_debug_input()
+	_check("FREE-04-ENTRY", free_walk.global_position.z < 3.30, "La entrada segura no atraviesa la puerta principal")
+
+	free_walk.teleport_to_pose(Vector3(0.0, 1.8, 5.0), 0.0)
+	await _wait_physics(90)
+	_check("FREE-05", free_walk.global_position.y >= -0.01, "El jugador cayo bajo el suelo")
+
+	free_walk.teleport_to_pose(Vector3(-3.35, 0.18, -1.22), 0.0)
+	free_walk.set_debug_input(Vector2(0.0, -1.0), true)
+	await _wait_physics(50)
+	free_walk.clear_debug_input()
+	_check("FREE-05-FURNITURE", free_walk.global_position.z > -1.58, "El jugador atraveso el mueble principal de cocina")
+
+	presentation.trigger_quick_zone(3)
+	await _wait_physics(3)
+	var kitchen_start := free_walk.global_position
+	free_walk.set_debug_input(Vector2(0.0, 1.0), false, true)
+	await _wait_physics(15)
+	free_walk.clear_debug_input()
+	_check(
+		"FREE-06",
+		kitchen_start.x < -1.7 and kitchen_start.z < -1.0 and free_walk.global_position.distance_to(kitchen_start) > 0.03,
+		"La posicion segura de cocina no permite recorrido"
+	)
+
+	free_walk.teleport_to_pose(Vector3(1.00, 0.18, -1.45), -PI / 2.0)
+	free_walk.set_debug_input(Vector2(0.0, -1.0))
+	await _wait_physics(35)
+	free_walk.clear_debug_input()
+	_check(
+		"FREE-07",
+		free_walk.global_position.x > 2.0 and free_walk.global_position.z < -0.7,
+		"El area tecnica no es accesible"
+	)
+
+	free_walk.teleport_to_pose(Vector3(0.75, 0.18, -1.42), PI)
+	free_walk.set_debug_input(Vector2(0.0, -1.0), true)
+	await _wait_physics(110)
+	free_walk.clear_debug_input()
+	_check(
+		"FREE-08",
+		navigation.get_portal_count() >= 14 and free_walk.global_position.y > 3.0,
+		"La transicion segura de escalera no llega a planta alta"
+	)
+
+	var quick_zones_ok := true
+	for index in range(1, 10):
+		var pose: Dictionary = presentation.get_quick_pose(index)
+		quick_zones_ok = quick_zones_ok and presentation.trigger_quick_zone(index)
+		quick_zones_ok = quick_zones_ok and free_walk.global_position.distance_to(pose["position"]) < 0.02
+	_check("FREE-09", quick_zones_ok, "Uno o mas accesos 1-9 no llevaron a su posicion segura")
+
+	presentation.switch_mode(2, false)
+	var general_technical: bool = twin.is_technical_view() and scene.get_node("CameraRig/Camera3D").current
+	presentation.trigger_quick_zone(2)
+	presentation.toggle_technical_view()
+	var technical_on: bool = twin.is_technical_view() and presentation.is_free_mode()
+	presentation.toggle_technical_view()
+	_check("FREE-10", general_technical and technical_on and not twin.is_technical_view(), "T o la vista tecnica general no alternaron correctamente")
+
+	hud.set_display_mode(hud.DISPLAY_FULL)
+	var hud_cycle_ok: bool = hud.cycle_display_mode() == hud.DISPLAY_COMPACT
+	hud_cycle_ok = hud_cycle_ok and hud.cycle_display_mode() == hud.DISPLAY_HIDDEN
+	hud_cycle_ok = hud_cycle_ok and hud.cycle_display_mode() == hud.DISPLAY_FULL
+	_check("FREE-11", hud_cycle_ok, "H no recorre los tres estados del HUD")
+
+	presentation.toggle_help(true)
+	var help_opened: bool = presentation.is_help_visible()
+	presentation.toggle_help(false)
+	_check("FREE-12", help_opened and not presentation.is_help_visible(), "F1 no alterna la ayuda")
+
+	free_walk.teleport_to_pose(Vector3(-4.0, 3.32, -2.0), 1.0)
+	presentation.reset_free_camera()
+	var start_pose: Dictionary = presentation.get_quick_pose(1)
+	_check("FREE-13", free_walk.global_position.distance_to(start_pose["position"]) < 0.02, "R no restablece la camara")
+	presentation.toggle_presentation_mode()
+	var presentation_enabled: bool = presentation.is_presentation_mode() and hud.get_display_mode() == hud.DISPLAY_COMPACT
+	presentation.toggle_presentation_mode()
+	_check("FREE-13-PRESENTATION", presentation_enabled and hud.get_display_mode() == hud.DISPLAY_FULL, "F5 no alterna Presentation Mode")
+
+	scene.bridge_connected = false
+	scene.demo_paused = false
+	scene.demo_index = 0
+	scene.demo_time = 1.99
+	free_walk.set_debug_input(Vector2(1.0, 0.0))
+	var replay_walk_start := free_walk.global_position
+	scene.advance_local_replay_for_test(0.02)
+	await _wait_physics(12)
+	free_walk.clear_debug_input()
+	_check(
+		"FREE-14",
+		scene.demo_index == 1 and free_walk.get_camera().current and free_walk.global_position.distance_to(replay_walk_start) > 0.02,
+		"El replay no continuo mientras el jugador caminaba"
+	)
+	var paused_once: bool = scene.toggle_local_replay()
+	var resumed_once: bool = not scene.toggle_local_replay()
+	_check("FREE-14-PAUSE", paused_once and resumed_once, "Space/P no pausa y reanuda el replay local")
+
+	scene.apply_telemetry({
+		"state": "SYSTEM_SAFE_LATCHED",
+		"action": "SAFE_CLOSE",
+		"zone1_adc": 3686,
+		"zone2_adc": 3900,
+		"zone1_level": "HIGH",
+		"zone2_level": "HIGH",
+		"valve": "CLOSED",
+		"buzzer": true,
+		"deadline_us": 500000,
+		"response_us": 22504,
+		"result": "PASS"
+	})
+	await process_frame
+	_check(
+		"FREE-15",
+		twin.valve_body.material_override != null and abs(twin.valve_handle.rotation_degrees.y - 90.0) < 0.1,
+		"La valvula no reflejo CLOSED"
+	)
+	_check(
+		"FREE-16",
+		twin.sensor_z1.material_override != null and twin.sensor_z2.material_override != null and twin.gas_z1[0].visible and twin.gas_z2[0].visible,
+		"Z1/Z2 o sus fugas no reflejaron telemetria"
+	)
+	_check(
+		"FREE-17",
+		labels.get_candidate_count() == 14 and scene.get_node_or_null("CameraRig/Camera3D") != null,
+		"La integracion visual previa quedo incompleta"
+	)
+	print(
+		"FREE_WALK_NAVIGATION: colliders=%d portals=%d labels=%d" % [
+			navigation.get_collision_count(),
+			navigation.get_portal_count(),
+			labels.get_candidate_count()
+		]
+	)
+
+	if _failed:
+		print("GODOT_FREE_WALK_SELF_TEST: FAIL")
+		quit(1)
+	else:
+		print("GODOT_FREE_WALK_SELF_TEST: PASS")
+		quit(0)
+
+
+func _wait_physics(frame_count: int) -> void:
+	for _index in range(frame_count):
+		await physics_frame
+
+
+func _check(test_name: String, condition: bool, failure_message: String) -> void:
+	if condition:
+		print(test_name + ": PASS")
+	else:
+		push_error(test_name + ": " + failure_message)
+		_failed = true
