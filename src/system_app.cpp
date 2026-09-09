@@ -3,6 +3,7 @@
 #include <Arduino.h>
 
 #include "actuators.h"
+#include "boot_guard.h"
 #include "config.h"
 #include "diagnostics.h"
 #include "safety.h"
@@ -21,27 +22,37 @@ SensorTaskContext sensorContext{};
 SafetyTaskContext safetyContext{};
 ActuatorTaskContext actuatorContext{};
 DiagnosticsTaskContext diagnosticsContext{};
+BootGuard bootGuard{};
 
 void failBoot(const char *message) {
-  applyBootSafeActuatorState(true);
+  bootGuard.latchFailure();
   Serial.printf("[BOOT][ERROR] %s\r\n", message);
   for (;;) {
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    applyBootSafeActuatorState(true);
+    vTaskDelay(pdMS_TO_TICKS(100));
   }
 }
 
-void createTask(TaskFunction_t task, const char *name, uint32_t stackDepth,
-                void *parameters, UBaseType_t priority) {
+bool createTask(TaskFunction_t task, const char *name, uint32_t stackDepth,
+                void *parameters, UBaseType_t priority,
+                TaskHandle_t *taskHandle) {
   const BaseType_t result =
       xTaskCreatePinnedToCore(task, name, stackDepth, parameters, priority,
-                              nullptr, TASK_CORE);
+                              taskHandle, TASK_CORE);
   if (result != pdPASS) {
     Serial.printf("[BOOT][ERROR] No se pudo crear %s\r\n", name);
-    failBoot("Fallo creando tarea FreeRTOS");
+    return false;
   }
+  return true;
 }
 
 }  // namespace
+
+void waitForSystemRuntimeActivation() {
+  while (!bootGuard.runtimeEnabled()) {
+    vTaskSuspend(nullptr);
+  }
+}
 
 void setupFreeRtosIntegration() {
   configureSensorInputs();
@@ -73,14 +84,24 @@ void setupFreeRtosIntegration() {
                 SENSOR_QUEUE_LENGTH, ACTUATOR_QUEUE_LENGTH,
                 DIAGNOSTICS_QUEUE_LENGTH);
 
-  createTask(taskActuator, "TaskActuator", TASK_STACK_WORDS, &actuatorContext,
-             PRIORITY_ACTUATOR);
-  createTask(taskSafety, "TaskSafety", TASK_STACK_WORDS, &safetyContext,
-             PRIORITY_SAFETY);
-  createTask(taskSensors, "TaskSensors", TASK_STACK_WORDS, &sensorContext,
-             PRIORITY_SENSORS);
-  createTask(taskDiagnostics, "TaskDiagnostics", TASK_STACK_WORDS,
-             &diagnosticsContext, PRIORITY_DIAGNOSTICS);
+  TaskHandle_t taskHandles[4] = {nullptr, nullptr, nullptr, nullptr};
+  const bool tasksCreated =
+      createTask(taskActuator, "TaskActuator", TASK_STACK_WORDS,
+                 &actuatorContext, PRIORITY_ACTUATOR, &taskHandles[0]) &&
+      createTask(taskSafety, "TaskSafety", TASK_STACK_WORDS, &safetyContext,
+                 PRIORITY_SAFETY, &taskHandles[1]) &&
+      createTask(taskSensors, "TaskSensors", TASK_STACK_WORDS, &sensorContext,
+                 PRIORITY_SENSORS, &taskHandles[2]) &&
+      createTask(taskDiagnostics, "TaskDiagnostics", TASK_STACK_WORDS,
+                 &diagnosticsContext, PRIORITY_DIAGNOSTICS, &taskHandles[3]);
+
+  if (!tasksCreated || !bootGuard.completeInitialization()) {
+    failBoot("Fallo creando tarea FreeRTOS");
+  }
+
+  for (TaskHandle_t taskHandle : taskHandles) {
+    vTaskResume(taskHandle);
+  }
 }
 
 }  // namespace sigas

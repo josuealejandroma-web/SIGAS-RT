@@ -147,7 +147,10 @@ El test verifica:
 - LED rojo;
 - boton presionado y liberado.
 
-Para ejecutar este modo con el firmware de integracion FreeRTOS, el escenario mantiene presionado `resetBtn` al arrancar. Si el boton no esta presionado al inicio, el firmware entra al modo de operacion FreeRTOS.
+Este modo requiere compilar explicitamente el entorno
+`esp32doit-devkit-v1-hardware-smoke`. Mantener presionado `resetBtn` durante
+el arranque del firmware normal no selecciona el smoke test; el boton queda
+reservado al rearme.
 
 ## 13. Resultados obtenidos
 

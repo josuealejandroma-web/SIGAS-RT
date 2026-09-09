@@ -24,6 +24,20 @@
 | RS-10 | IT-01, CL-11 | Arranque en `SYSTEM_STARTUP` con valvula cerrada hasta confirmar muestras seguras. | PASS |
 | RS-11 | CL-11 | Ausencia de primera muestra lleva a `SYSTEM_FAULT` y `SAFE_CLOSE`. | PASS |
 
+## Regresiones fail-safe locales
+
+| Caso | Requisito | Evidencia | Resultado |
+| --- | --- | --- | --- |
+| SAFE-BOOT-01 | C02 / GPIO23 exclusivo de rearme | Test host compila modo normal y variante explicita `SIGAS_RT_HARDWARE_SMOKE_TEST`; `src/main.cpp` no consulta el boton para seleccionar modo. | PASS local |
+| SAFE-FAULT-01 | RS-09 | `NORMAL -> timeout -> FAULT`; las muestras validas recuperadas no eliminan `SAFE_CLOSE`. | PASS local |
+| SAFE-FAULT-02 | RS-03 / RS-09 | `SAFE_LATCHED -> timeout -> FAULT` conserva el requisito de rearme. | PASS local |
+| SAFE-FAULT-03 | RS-09 | Muestras seguras consecutivas sin boton mantienen `SYSTEM_FAULT`. | PASS local |
+| SAFE-FAULT-04 | RF-13 / RS-03 | Tras muestras seguras, liberacion y pulsacion estable, `FAULT -> NORMAL`. | PASS local |
+| SAFE-BOOT-02 | RS-02 / RS-10 | Un fallo parcial enclava `BootGuard`, rechaza la activacion y exige `SAFE_CLOSE`. | PASS local |
+
+Los casos se ejecutan con `scripts/verify_fail_safe.ps1` sin Wokwi. El build
+ESP32 sigue verificando la integracion de los helpers con el firmware real.
+
 ## Escenarios temporales
 
 | Caso | Archivo | Proposito | Resultado |

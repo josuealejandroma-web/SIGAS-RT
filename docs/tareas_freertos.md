@@ -94,7 +94,11 @@ El sistema no reabre automaticamente aunque ambas zonas vuelvan a normal. El rea
 
 La politica implementada es cerrar ante condicion critica confirmada o falla de datos de sensor. Si `TaskSafety` deja de recibir muestras despues de haber recibido al menos una muestra valida durante `SENSOR_DATA_TIMEOUT_US = 350000`, entra en `SYSTEM_FAULT` y ordena `SAFE_CLOSE`.
 
-La falla de creacion de colas o tareas se maneja en el arranque desde `src/system_app.cpp`: se imprime un error y se llama a `abort()`. No se continua una aplicacion parcialmente inicializada.
+La falla de creacion de colas o tareas se maneja en el arranque desde
+`src/system_app.cpp`. Cada tarea espera suspendida en el guard de activacion;
+solo se reanudan las cuatro cuando la topologia esta completa. Si una creacion
+falla, el guard queda enclavado y el estado `SAFE_CLOSE` se reaplica
+periodicamente, por lo que una topologia parcial no puede actuar.
 
 ## Medicion temporal
 

@@ -1,6 +1,7 @@
 #include "diagnostics.h"
 
 #include "config.h"
+#include "system_app.h"
 #include "system_types.h"
 
 namespace sigas {
@@ -53,6 +54,7 @@ void publishVisualizationTelemetry(const SensorSample &sample,
 
 void taskDiagnostics(void *parameters) {
   auto *context = static_cast<DiagnosticsTaskContext *>(parameters);
+  waitForSystemRuntimeActivation();
   TickType_t lastWake = xTaskGetTickCount();
   SensorSample latestSample{};
   SafetyDecision latestDecision{};

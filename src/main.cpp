@@ -1,19 +1,16 @@
 #include <Arduino.h>
 
-#include "config.h"
+#include "boot_guard.h"
 #include "hardware_smoke_test.h"
 #include "system_app.h"
 
 void setup() {
-  Serial.begin(115200);
-  pinMode(sigas::PIN_RESET_BUTTON, INPUT_PULLUP);
-  delay(500);
-
-  if (digitalRead(sigas::PIN_RESET_BUTTON) == LOW) {
+  if (sigas::configuredBootMode() == sigas::BootMode::kHardwareSmokeTest) {
     sigas::setupHardwareSmokeTest();
     return;
   }
 
+  Serial.begin(115200);
   sigas::setupFreeRtosIntegration();
 }
 

@@ -1,7 +1,7 @@
 #ifndef SIGAS_RT_SYSTEM_TYPES_H
 #define SIGAS_RT_SYSTEM_TYPES_H
 
-#include <Arduino.h>
+#include <stdint.h>
 
 namespace sigas {
 

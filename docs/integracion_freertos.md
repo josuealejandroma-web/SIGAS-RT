@@ -74,7 +74,16 @@ sensorQueue -> TaskSafety -> actuatorQueue -> TaskActuator
 
 ## 8. Modo smoke test
 
-El hardware smoke test anterior se conserva. Para seleccionarlo en simulacion, `hardware_smoke_test.yaml` arranca manteniendo presionado `resetBtn`; `src/main.cpp` detecta ese estado inicial y llama a `setupHardwareSmokeTest()`.
+El hardware smoke test anterior se conserva, pero queda aislado del firmware
+normal mediante el flag de compilacion `SIGAS_RT_HARDWARE_SMOKE_TEST`. El
+boton `resetBtn` no selecciona modos durante el arranque y GPIO23 se usa
+exclusivamente como rearme en runtime normal.
+
+Entorno dedicado:
+
+```powershell
+.\.venv\Scripts\platformio run -e esp32doit-devkit-v1-hardware-smoke
+```
 
 Comando:
 
@@ -85,7 +94,8 @@ cd simulation
 
 ## 9. Modo operacion FreeRTOS
 
-El modo FreeRTOS es el arranque predeterminado cuando `resetBtn` no esta presionado al inicio.
+El modo FreeRTOS es el unico arranque del firmware normal, sin depender del
+estado fisico de `resetBtn` al encender.
 
 Comando:
 

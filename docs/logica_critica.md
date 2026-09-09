@@ -29,6 +29,7 @@ SYSTEM_WARNING -> SYSTEM_CRITICAL     si una zona confirma HIGH con N muestras
 SYSTEM_CRITICAL -> SYSTEM_SAFE_LATCHED despues de publicar SAFE_CLOSE
 SYSTEM_SAFE_LATCHED -> SYSTEM_NORMAL  solo por reset manual seguro y estable
 SYSTEM_* -> SYSTEM_FAULT              ante timeout de datos de sensor
+SYSTEM_FAULT -> SYSTEM_NORMAL         solo por reset manual seguro y estable
 ```
 
 ## Umbrales e histeresis
@@ -56,15 +57,26 @@ El reset manual se acepta solo si:
 
 - ambas zonas estan bajo `ADC_SAFE_EXIT_SIMULATION_ONLY`;
 - hay `SAFE_RESET_CONFIRMATION_SAMPLES = 3` muestras seguras consecutivas;
+- se observo el boton liberado despues de entrar al estado fail-safe;
 - el boton permanece estable `RESET_DEBOUNCE_SAMPLES = 2` muestras.
 
-Si el reset se solicita con alguna zona insegura, el sistema registra rechazo y permanece enclavado.
+La misma politica se aplica a `SYSTEM_SAFE_LATCHED` y `SYSTEM_FAULT`. La
+recuperacion de muestras no abre la valvula por si sola. Si el reset se
+solicita con alguna zona insegura, el sistema registra rechazo y permanece
+enclavado.
 
 ## Fail-safe y fallas
 
 Ante timeout de datos de sensor, `TaskSafety` entra a `SYSTEM_FAULT` y ordena `SAFE_CLOSE`. El umbral es `SENSOR_DATA_TIMEOUT_US = 350000` despues de haber recibido al menos una muestra valida.
 
-Ante falla de creacion de cola o tarea FreeRTOS, `src/system_app.cpp` registra el error y llama a `abort()`. La aplicacion no continua con una topologia incompleta.
+Ante falla de creacion de cola o tarea FreeRTOS, `src/system_app.cpp` enclava
+el guard de arranque, mantiene las tareas creadas suspendidas y reaplica el
+estado de actuacion seguro. Las cuatro tareas se activan solamente despues de
+completar la topologia de inicializacion.
+
+El hardware smoke test no se selecciona mediante el boton del producto. Solo
+se compila como modo de arranque con `SIGAS_RT_HARDWARE_SMOKE_TEST`; en el
+firmware normal GPIO23 queda reservado al rearme.
 
 La deteccion de ADC desconectado, ruido fisico real y sensores fuera de rango certificados queda pendiente para una fase posterior con modelo electrico y criterios de diagnostico mas estrictos.
 

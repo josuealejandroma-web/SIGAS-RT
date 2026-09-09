@@ -1,6 +1,7 @@
 #include "sensors.h"
 
 #include "config.h"
+#include "system_app.h"
 #include "system_types.h"
 
 #include <esp_timer.h>
@@ -16,6 +17,7 @@ void configureSensorInputs() {
 
 void taskSensors(void *parameters) {
   auto *context = static_cast<SensorTaskContext *>(parameters);
+  waitForSystemRuntimeActivation();
   TickType_t lastWake = xTaskGetTickCount();
   uint32_t sequence = 0;
   uint64_t maxObservedExecutionUs = 0;

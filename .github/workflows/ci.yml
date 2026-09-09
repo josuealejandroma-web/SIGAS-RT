@@ -29,6 +29,14 @@ jobs:
       - name: Bridge unit tests
         run: python -m unittest discover visualization/bridge/tests
 
+      - name: Critical fail-safe host tests
+        run: |
+          mkdir -p .pio/safe-fail-safe-tests
+          c++ -std=c++17 -Wall -Wextra -Werror -Iinclude test/safe_fail_safe_tests.cpp -o .pio/safe-fail-safe-tests/normal
+          .pio/safe-fail-safe-tests/normal
+          c++ -std=c++17 -Wall -Wextra -Werror -Iinclude -DSIGAS_RT_HARDWARE_SMOKE_TEST -DEXPECT_HARDWARE_SMOKE_MODE test/safe_fail_safe_tests.cpp -o .pio/safe-fail-safe-tests/hardware-smoke
+          .pio/safe-fail-safe-tests/hardware-smoke
+
       - name: JSON validation
         run: |
           python -m json.tool visualization/scenarios/scenario_catalog.json >/dev/null

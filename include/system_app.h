@@ -4,6 +4,7 @@
 namespace sigas {
 
 void setupFreeRtosIntegration();
+void waitForSystemRuntimeActivation();
 
 }  // namespace sigas
 

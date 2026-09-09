@@ -3,6 +3,7 @@
 #include <ESP32Servo.h>
 
 #include "config.h"
+#include "system_app.h"
 #include "system_types.h"
 
 #include <esp_timer.h>
@@ -61,6 +62,7 @@ void applyBootSafeActuatorState(bool alarmOn) {
 
 void taskActuator(void *parameters) {
   auto *context = static_cast<ActuatorTaskContext *>(parameters);
+  waitForSystemRuntimeActivation();
   ActuatorCommand command{};
   RequestedAction lastAction = RequestedAction::kNormal;
   bool hasCommand = false;

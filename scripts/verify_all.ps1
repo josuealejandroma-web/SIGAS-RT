@@ -70,6 +70,10 @@ Invoke-Step "Python bridge tests" {
   python -m unittest discover visualization\bridge\tests
 }
 
+Invoke-Step "Critical fail-safe host tests" {
+  powershell -ExecutionPolicy Bypass -File scripts\verify_fail_safe.ps1
+}
+
 if (-not $SkipBlender) {
   $blender = Resolve-BlenderCommand
   if ([string]::IsNullOrWhiteSpace($blender)) {

@@ -3,6 +3,8 @@
 #include <esp_timer.h>
 
 #include "config.h"
+#include "fail_safe_policy.h"
+#include "system_app.h"
 #include "system_types.h"
 
 namespace sigas {
@@ -14,9 +16,9 @@ struct SafetyRuntime {
   ZoneLevel zone2Level = ZoneLevel::kNormal;
   uint8_t highCountZone1 = 0;
   uint8_t highCountZone2 = 0;
-  uint8_t safeSamples = 0;
-  uint8_t resetStableSamples = 0;
-  bool resetWasPressed = false;
+  uint8_t startupSafeSamples = 0;
+  FailSafeRecovery recovery{SAFE_RESET_CONFIRMATION_SAMPLES,
+                            RESET_DEBOUNCE_SAMPLES};
   bool safeConditionsLogged = false;
   uint64_t firstHighTimestampUs = 0;
   uint64_t criticalConfirmedTimestampUs = 0;
@@ -74,9 +76,7 @@ bool criticalConfirmed(const SafetyRuntime &runtime) {
 }
 
 RequestedAction actionForState(SystemState state) {
-  if (state == SystemState::kStartup || state == SystemState::kCritical ||
-      state == SystemState::kSafeLatched ||
-      state == SystemState::kFault) {
+  if (requiresSafeClose(state)) {
     return RequestedAction::kSafeClose;
   }
   if (state == SystemState::kWarning) {
@@ -185,8 +185,54 @@ void enterCriticalThenLatch(SafetyRuntime &runtime, TransitionReason &reason) {
   logStateTransition(previous, runtime.state, reason);
 
   runtime.state = SystemState::kSafeLatched;
+  runtime.recovery.enterFailSafe();
+  runtime.safeConditionsLogged = false;
   logStateTransition(SystemState::kCritical, runtime.state,
                      TransitionReason::kSafeCloseRequested);
+}
+
+void clearCriticalHistory(SafetyRuntime &runtime) {
+  runtime.highCountZone1 = 0;
+  runtime.highCountZone2 = 0;
+  runtime.firstHighTimestampUs = 0;
+  runtime.criticalConfirmedTimestampUs = 0;
+  runtime.commandSentTimestampUs = 0;
+  runtime.safeConditionsLogged = false;
+}
+
+void updateFailSafeRecovery(SafetyRuntime &runtime,
+                            const SensorSample &sample,
+                            TransitionReason &reason) {
+  const bool zonesSafe = bothZonesSafe(sample);
+  const RearmResult rearm =
+      runtime.recovery.observe(zonesSafe, sample.resetPressed);
+
+  if (!zonesSafe) {
+    runtime.safeConditionsLogged = false;
+  } else if (runtime.recovery.safeConditionsConfirmed() &&
+             !runtime.safeConditionsLogged) {
+    Serial.println("[SAFETY] conditions safe");
+    runtime.safeConditionsLogged = true;
+  }
+
+  if (rearm == RearmResult::kNone) {
+    return;
+  }
+
+  Serial.println("[RESET] requested");
+  if (rearm == RearmResult::kAccepted) {
+    const SystemState previous = runtime.state;
+    runtime.state = stateAfterRearm(runtime.state, rearm);
+    clearCriticalHistory(runtime);
+    reason = TransitionReason::kResetAccepted;
+    Serial.println("[RESET] conditions verified SAFE");
+    logStateTransition(previous, runtime.state, reason);
+    return;
+  }
+
+  reason = TransitionReason::kResetRejected;
+  Serial.println("[RESET] rejected unsafe conditions");
+  Serial.printf("[STATE] remains %s\r\n", toString(runtime.state));
 }
 
 void updateStateFromSample(SafetyRuntime &runtime, const SensorSample &sample,
@@ -201,53 +247,8 @@ void updateStateFromSample(SafetyRuntime &runtime, const SensorSample &sample,
                     runtime.zone2Level == ZoneLevel::kHigh, sample.timestampUs,
                     runtime);
 
-  if (bothZonesSafe(sample)) {
-    if (runtime.safeSamples < SAFE_RESET_CONFIRMATION_SAMPLES) {
-      ++runtime.safeSamples;
-    }
-  } else {
-    runtime.safeSamples = 0;
-    runtime.safeConditionsLogged = false;
-  }
-
-  if (sample.resetPressed) {
-    if (runtime.resetStableSamples < RESET_DEBOUNCE_SAMPLES) {
-      ++runtime.resetStableSamples;
-    }
-  } else {
-    runtime.resetStableSamples = 0;
-    runtime.resetWasPressed = false;
-  }
-
-  if (runtime.state == SystemState::kSafeLatched) {
-    if (runtime.safeSamples >= SAFE_RESET_CONFIRMATION_SAMPLES &&
-        !runtime.safeConditionsLogged) {
-      Serial.println("[SAFETY] conditions safe");
-      runtime.safeConditionsLogged = true;
-    }
-
-    if (sample.resetPressed && !runtime.resetWasPressed &&
-        runtime.resetStableSamples >= RESET_DEBOUNCE_SAMPLES) {
-      runtime.resetWasPressed = true;
-      Serial.println("[RESET] requested");
-      if (runtime.safeSamples >= SAFE_RESET_CONFIRMATION_SAMPLES) {
-        const SystemState previous = runtime.state;
-        runtime.state = SystemState::kNormal;
-        runtime.highCountZone1 = 0;
-        runtime.highCountZone2 = 0;
-        runtime.firstHighTimestampUs = 0;
-        runtime.criticalConfirmedTimestampUs = 0;
-        runtime.commandSentTimestampUs = 0;
-        runtime.safeConditionsLogged = false;
-        reason = TransitionReason::kResetAccepted;
-        Serial.println("[RESET] conditions verified SAFE");
-        logStateTransition(previous, runtime.state, reason);
-      } else {
-        reason = TransitionReason::kResetRejected;
-        Serial.println("[RESET] rejected unsafe conditions");
-        Serial.println("[STATE] remains SYSTEM_SAFE_LATCHED");
-      }
-    }
+  if (requiresManualRearm(runtime.state)) {
+    updateFailSafeRecovery(runtime, sample, reason);
     return;
   }
 
@@ -257,7 +258,15 @@ void updateStateFromSample(SafetyRuntime &runtime, const SensorSample &sample,
   }
 
   if (runtime.state == SystemState::kStartup) {
-    if (runtime.safeSamples >= SAFE_RESET_CONFIRMATION_SAMPLES) {
+    if (bothZonesSafe(sample)) {
+      if (runtime.startupSafeSamples < SAFE_RESET_CONFIRMATION_SAMPLES) {
+        ++runtime.startupSafeSamples;
+      }
+    } else {
+      runtime.startupSafeSamples = 0;
+    }
+
+    if (runtime.startupSafeSamples >= SAFE_RESET_CONFIRMATION_SAMPLES) {
       const SystemState previous = runtime.state;
       runtime.state = SystemState::kNormal;
       reason = TransitionReason::kStableNormal;
@@ -300,7 +309,9 @@ void handleSensorTimeout(SafetyTaskContext *context, SafetyRuntime &runtime,
   }
 
   const SystemState previous = runtime.state;
-  runtime.state = SystemState::kFault;
+  runtime.state = stateAfterSensorTimeout(runtime.state);
+  runtime.recovery.enterFailSafe();
+  runtime.safeConditionsLogged = false;
   runtime.commandSentTimestampUs = nowUs;
   Serial.println("[FAULT] SENSOR_DATA_TIMEOUT");
   logStateTransition(previous, runtime.state, TransitionReason::kSensorTimeout);
@@ -314,6 +325,7 @@ void handleSensorTimeout(SafetyTaskContext *context, SafetyRuntime &runtime,
 
 void taskSafety(void *parameters) {
   auto *context = static_cast<SafetyTaskContext *>(parameters);
+  waitForSystemRuntimeActivation();
   SensorSample sample{};
   SafetyRuntime runtime{};
   uint64_t maxObservedExecutionUs = 0;
