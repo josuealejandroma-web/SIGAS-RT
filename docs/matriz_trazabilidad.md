@@ -27,6 +27,22 @@ vigentes sus resultados temporales finales.
 | A05-03 | A05 | Decision y comando reciben el mismo `T_COMMAND_SENT` inmediatamente antes de publicar. | PASS local |
 | M05-01 | M05 | El summary se verifica y regenera deterministicamente desde `wcet_observed.csv`. | PASS local |
 
+## Regresiones de telemetria y demostracion
+
+| Caso | Hallazgo | Evidencia | Resultado |
+| --- | --- | --- | --- |
+| A01-01 a A01-02 | A01 | Solo el esquema SIGAS valido renueva `LIVE`; `{}` y payloads arbitrarios se rechazan. | PASS local |
+| A01-03 a A01-04 | A01 | Reloj monotono cambia a `STALE` en 1500 ms y `DISCONNECTED` en 3000 ms. | PASS local |
+| A01-05 a A01-06 | A01 | Un nuevo payload valido recupera `LIVE` desde ambos estados sin alterar `SystemState`. | PASS local |
+| A02-01 a A02-03 | A02 | `PASS/FAIL` se deriva de timestamps validos; `[TIMING]` vacio es invalido y queda `N/A`. | PASS local |
+| A02-04 a A02-07 | A02 | JSON nulo, vacio, truncado o con tipos incorrectos se descarta y el bridge continua. | PASS local |
+| A03-01 | A03 | La secuencia manual se identifica como `SYNTHETIC DEMO`. | PASS local |
+| A03-02 | A03 | El loader rechaza replay inexistente o JSONL malformado. | PASS local |
+| A03-03 | A03 | `RECORDED REPLAY` conserva orden y valida 13 eventos de una captura Wokwi identificada. | PASS local |
+
+Esta fase no ejecuto Wokwi CI ni reemplazo resultados temporales historicos. Las
+pruebas anteriores son locales y no modifican la logica critica del firmware.
+
 ## Seguridad funcional simulada
 
 | Requisito | Prueba | Evidencia | Resultado |

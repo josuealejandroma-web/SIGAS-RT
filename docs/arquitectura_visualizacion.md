@@ -32,7 +32,7 @@ Godot envia solicitudes de escenario por `127.0.0.1:45702`, pero esos comandos s
 | Bridge | `visualization/bridge/` | Validar comandos, ejecutar Wokwi y reenviar telemetria. |
 | Blender | `visualization/blender/` | Fuente reproducible de casa, tuberias y componentes fisicos. |
 | Modelos Godot | `visualization/godot/models/` | GLB importable por Godot. |
-| Godot | `visualization/godot/` | HUD, camaras, replay local, vista tecnica y estados visuales. |
+| Godot | `visualization/godot/` | HUD, camaras, frescura LIVE, replay grabado, demo sintetica, vista tecnica y estados visuales. |
 
 ## Vistas
 
@@ -60,6 +60,21 @@ La casa importada desde Blender incluye referencias visuales para ubicar el sist
 
 Estos elementos son geometria de soporte para observabilidad. La logica de seguridad permanece en firmware y la visualizacion solo refleja estados recibidos.
 
+## Contrato de telemetria
+
+El bridge acepta dos clases sin mezclarlas:
+
+- `state`: esquema SIGAS completo con estado ya decidido por `TaskSafety` y salida reportada por firmware;
+- `timing`: medicion valida con timestamps de confirmacion y recepcion del actuador, sin campos inventados de estado, ADC, nivel o valvula.
+
+Una linea vacia, JSON nulo, objeto vacio, tipo incorrecto o campo esencial ausente se descarta. Solo una medicion valida puede producir `PASS` cuando `T_ACTUATOR_RECEIVED - T_CRITICAL_CONFIRMED <= 500000 us`, o `FAIL` cuando supera el deadline. La ausencia de medicion se presenta como `N/A`.
+
+## Estado de conexion y fuente
+
+Godot conserva separadamente la conexion UDP y la fuente mostrada. `LIVE`, `STALE` y `DISCONNECTED` se calculan con reloj monotono y umbrales de 1500/3000 ms. `RECORDED REPLAY` usa un JSONL proveniente de una captura Wokwi identificada; `SYNTHETIC DEMO` usa datos manuales y nunca se rotula como replay grabado.
+
+Ninguno de estos cinco indicadores decide si existe fuga, modifica `SystemState`, abre o cierra actuadores ni sustituye `TaskSafety` o `TaskActuator`.
+
 ## Estados visuales
 
 | Estado | Representacion |
@@ -73,4 +88,4 @@ Estos elementos son geometria de soporte para observabilidad. La logica de segur
 
 ## Validacion sin Wokwi
 
-Cuando Wokwi no esta disponible por cuota, Godot se valida con replay local y `VisualSelfTest.gd`. Esto no reemplaza la evidencia Wokwi, pero permite comprobar importacion del GLB, nodos obligatorios, vista tecnica, camaras y respuesta visual a estados.
+Sin ejecutar Wokwi, Godot se valida con `VisualSelfTest.gd`, `FreeWalkSelfTest.gd` y `TelemetrySelfTest.gd`. El replay grabado y la demo sintetica no reemplazan evidencia Wokwi nueva; permiten comprobar importacion, navegacion, contrato, expiracion y respuesta visual local.

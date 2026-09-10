@@ -92,17 +92,20 @@ func _run() -> void:
 	var main = scene
 	main.apply_telemetry({
 		"type": "state",
+		"seq": 31,
 		"state": "SYSTEM_SAFE_LATCHED",
 		"action": "SAFE_CLOSE",
+		"reason": "SELF_TEST",
 		"zone1_adc": 3686,
 		"zone2_adc": 410,
 		"zone1_level": "HIGH",
 		"zone2_level": "NORMAL",
+		"reset": false,
 		"valve": "CLOSED",
 		"buzzer": true,
-		"deadline_us": 500000,
-		"response_us": 22504,
-		"result": "PASS"
+		"sample_us": 4000000,
+		"decision_us": 4000060,
+		"deadline_us": 500000
 	})
 	await process_frame
 

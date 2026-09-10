@@ -139,8 +139,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_F5:
 			toggle_presentation_mode()
 		KEY_SPACE, KEY_P:
-			var paused: bool = _main.toggle_local_replay()
-			show_toast("REPLAY: " + ("PAUSA" if paused else "ACTIVO"))
+			if _main.is_local_source():
+				var paused: bool = _main.toggle_local_playback()
+				show_toast(_main.get_source_name() + ": " + ("PAUSA" if paused else "ACTIVO"))
+			else:
+				show_toast("TELEMETRIA DE RED: NO SE PAUSA")
 		_:
 			return
 	get_viewport().set_input_as_handled()
@@ -397,7 +400,7 @@ func _build_help(parent: Control) -> void:
 	box.add_child(title)
 
 	var help_text := Label.new()
-	help_text.text = "WASD       Mover\nMouse      Mirar\nShift      Rapido\nCtrl       Inspeccion lenta\nRueda      Ajustar velocidad\nT          Vista tecnica\nH          HUD completo / compacto / oculto\n1-9        Ir a zona\n0          Vista tecnica general\nG / U      Planta baja / alta\nSpace / P  Pausar replay local\nR          Restablecer camara\nF5         Presentation Mode\nF1 / Esc   Cerrar ayuda\nEsc        Liberar / capturar mouse"
+	help_text.text = "WASD       Mover\nMouse      Mirar\nShift      Rapido\nCtrl       Inspeccion lenta\nRueda      Ajustar velocidad\nT          Vista tecnica\nH          HUD completo / compacto / oculto\n1-9        Ir a zona\n0          Vista tecnica general\nG / U      Planta baja / alta\nSpace / P  Pausar fuente local\nR          Restablecer camara\nF5         Presentation Mode\nF1 / Esc   Cerrar ayuda\nEsc        Liberar / capturar mouse"
 	help_text.add_theme_font_size_override("font_size", 16)
 	help_text.add_theme_constant_override("line_spacing", 5)
 	box.add_child(help_text)

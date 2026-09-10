@@ -32,7 +32,7 @@ Godot inicia en `MODO: EXPLORACION LIBRE`, frente a la entrada. El menu superior
 | `G`, `U` | Ir a planta baja o planta alta. |
 | `T` | Alternar arquitectura y vista tecnica sin abandonar el modo libre. |
 | `H` | Alternar HUD completo, compacto y oculto. |
-| `Space` o `P` | Pausar o reanudar el replay local. No pausa telemetria `LIVE`. |
+| `Space` o `P` | Pausar o reanudar `RECORDED REPLAY` o `SYNTHETIC DEMO`. No pausa telemetria de red. |
 | `F1` | Mostrar u ocultar ayuda. |
 | `R` | Restablecer la camara frente a la entrada. |
 | `F5` | Alternar Presentation Mode con HUD compacto y comienzo exterior. |
@@ -71,7 +71,7 @@ La geometria Blender, sus markers y el tour interior no se modifican.
 
 ## HUD y componentes
 
-El HUD compacto mantiene `SIGAS-RT`, estado, ADC de Z1/Z2, valvula y fuente `LIVE`/`REPLAY`. Las etiquetas de proximidad se limitan al piso actual y cubren:
+El HUD compacto mantiene `SIGAS-RT`, estado, ADC de Z1/Z2, valvula, fuente y conexion. El HUD completo permite seleccionar `Replay grabado` o `Demo sintetica`. Las etiquetas de proximidad se limitan al piso actual y cubren:
 
 - MQ-2 Zona 1 y Zona 2;
 - ESP32, buzzer y LEDs;
@@ -81,9 +81,13 @@ El HUD compacto mantiene `SIGAS-RT`, estado, ADC de Z1/Z2, valvula y fuente `LIV
 
 Sensor Z1/Z2 muestran ADC y nivel recibidos. La valvula y el panel muestran el estado recibido. Las nubes de fuga son conceptuales; no son CFD ni una estimacion certificada de dispersion.
 
-## Replay durante el recorrido
+## Fuentes durante el recorrido
 
-Sin bridge, la secuencia local recorre `SYSTEM_STARTUP`, `SYSTEM_NORMAL`, `SYSTEM_WARNING`, `SYSTEM_CRITICAL` y `SYSTEM_SAFE_LATCHED`. El jugador conserva control mientras cambian sensores, LEDs, buzzer, fugas y valvula. Al recibirse UDP valido, la fuente cambia a `LIVE` y la camara sigue independiente de la telemetria.
+`LIVE` indica datos SIGAS validos con menos de 1500 ms de antiguedad. A los 1500 ms cambia a `STALE` y a los 3000 ms a `DISCONNECTED`; el ultimo estado del firmware permanece visible y no se reclasifica como seguro, normal o falla.
+
+`RECORDED REPLAY` reproduce, en orden, 12 estados y un evento temporal extraidos de la captura real `simulation/wokwi-serial-visualization.log`. El archivo `wokwi_recorded_replay.jsonl` identifica esa fuente por ruta y SHA-256; su alcance es visual e historico, no evidencia temporal vigente. `SYNTHETIC DEMO` es la secuencia construida manualmente que recorre los estados visuales para exposicion. No se presenta como telemetria grabada.
+
+El jugador conserva control con ambas fuentes locales. Al recibirse UDP valido la fuente cambia a `LIVE`; la camara sigue independiente de telemetria y `STALE`/`DISCONNECTED` nunca modifican actuadores.
 
 ## Secuencia recomendada
 
@@ -93,7 +97,7 @@ Sin bridge, la secuencia local recorre `SYSTEM_STARTUP`, `SYSTEM_NORMAL`, `SYSTE
 4. Usar `4`, `5` y `6` para area tecnica, medidor/valvulas y panel ESP32.
 5. Subir por la escalera o usar `U`; recorrer planta alta, dormitorio y balcon con `7`, `8`, `9`.
 6. Presionar `0` o `T` para exponer tuberias y actuadores en vista tecnica.
-7. Ejecutar replay y caminar mientras se observa el cierre automatico reportado por telemetria.
+7. Elegir `Replay grabado` o `Demo sintetica` y caminar mientras se observa la representacion del cierre reportado en esa fuente.
 
 ## Validacion
 
@@ -101,7 +105,8 @@ Sin bridge, la secuencia local recorre `SYSTEM_STARTUP`, `SYSTEM_NORMAL`, `SYSTE
 tools\godot\godot.cmd --headless --path visualization\godot --quit
 tools\godot\godot.cmd --headless --path visualization\godot --script res://scripts/VisualSelfTest.gd
 tools\godot\godot.cmd --headless --path visualization\godot --script res://scripts/FreeWalkSelfTest.gd
+tools\godot\godot.cmd --headless --path visualization\godot --script res://scripts/TelemetrySelfTest.gd
 powershell -ExecutionPolicy Bypass -File scripts\verify_all.ps1 -SkipWokwi
 ```
 
-`FreeWalkSelfTest.gd` cubre `FREE-01` a `FREE-17` y comprobaciones adicionales de entrada y mobiliario. Las capturas de validacion grafica se generan localmente dentro de `.godot/` y no se versionan.
+`FreeWalkSelfTest.gd` cubre `FREE-01` a `FREE-17`; `TelemetrySelfTest.gd` cubre expiracion, recuperacion, rechazo de payloads y distincion de fuentes. Las capturas de validacion grafica se generan localmente dentro de `.godot/` y no se versionan.

@@ -173,6 +173,9 @@ if (-not $SkipGodot) {
     Invoke-Step "Godot free walk self test" {
       & $godot --headless --path visualization\godot --script res://scripts/FreeWalkSelfTest.gd
     }
+    Invoke-Step "Godot telemetry self test" {
+      & $godot --headless --path visualization\godot --script res://scripts/TelemetrySelfTest.gd
+    }
   }
 }
 

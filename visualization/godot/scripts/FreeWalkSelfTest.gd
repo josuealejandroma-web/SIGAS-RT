@@ -147,36 +147,40 @@ func _run() -> void:
 	presentation.toggle_presentation_mode()
 	_check("FREE-13-PRESENTATION", presentation_enabled and hud.get_display_mode() == hud.DISPLAY_FULL, "F5 no alterna Presentation Mode")
 
-	scene.bridge_connected = false
-	scene.demo_paused = false
-	scene.demo_index = 0
-	scene.demo_time = 1.99
+	scene.start_synthetic_demo(false)
+	scene.local_playback_paused = false
+	scene.synthetic_index = 0
+	scene.synthetic_time = 1.99
 	free_walk.set_debug_input(Vector2(1.0, 0.0))
-	var replay_walk_start := free_walk.global_position
-	scene.advance_local_replay_for_test(0.02)
+	var demo_walk_start := free_walk.global_position
+	scene.advance_local_playback_for_test(0.02)
 	await _wait_physics(12)
 	free_walk.clear_debug_input()
 	_check(
 		"FREE-14",
-		scene.demo_index == 1 and free_walk.get_camera().current and free_walk.global_position.distance_to(replay_walk_start) > 0.02,
-		"El replay no continuo mientras el jugador caminaba"
+		scene.synthetic_index == 1 and free_walk.get_camera().current and free_walk.global_position.distance_to(demo_walk_start) > 0.02,
+		"La demo sintetica no continuo mientras el jugador caminaba"
 	)
-	var paused_once: bool = scene.toggle_local_replay()
-	var resumed_once: bool = not scene.toggle_local_replay()
-	_check("FREE-14-PAUSE", paused_once and resumed_once, "Space/P no pausa y reanuda el replay local")
+	var paused_once: bool = scene.toggle_local_playback()
+	var resumed_once: bool = not scene.toggle_local_playback()
+	_check("FREE-14-PAUSE", paused_once and resumed_once, "Space/P no pausa y reanuda la fuente local")
 
 	scene.apply_telemetry({
+		"type": "state",
+		"seq": 40,
 		"state": "SYSTEM_SAFE_LATCHED",
 		"action": "SAFE_CLOSE",
+		"reason": "SELF_TEST",
 		"zone1_adc": 3686,
 		"zone2_adc": 3900,
 		"zone1_level": "HIGH",
 		"zone2_level": "HIGH",
+		"reset": false,
 		"valve": "CLOSED",
 		"buzzer": true,
-		"deadline_us": 500000,
-		"response_us": 22504,
-		"result": "PASS"
+		"sample_us": 5000000,
+		"decision_us": 5000060,
+		"deadline_us": 500000
 	})
 	await process_frame
 	_check(
