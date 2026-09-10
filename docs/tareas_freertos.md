@@ -80,7 +80,7 @@ Con los valores observados en Wokwi, 410 clasifica como `NORMAL`, 2048 como `WAR
 
 ## Confirmacion y enclavamiento
 
-La condicion critica requiere `CRITICAL_CONFIRMATION_SAMPLES = 3` muestras consecutivas altas en cualquiera de las dos zonas. Con periodo de sensores de 100 ms, la confirmacion ocurre aproximadamente 300 ms despues del inicio de una fuga sostenida simulada.
+La condicion critica requiere `CRITICAL_CONFIRMATION_SAMPLES = 3` muestras altas con `sequence` consecutivo en cualquiera de las dos zonas. La suma usa semantica `uint32_t`, por lo que `0xFFFFFFFF -> 0` es continua. Si `xQueueOverwrite()` hace visible un salto, ambos candidatos se reinician antes de tratar la muestra nueva. Con periodo de sensores de 100 ms, la confirmacion ocurre aproximadamente 300 ms despues del inicio de una fuga sostenida simulada.
 
 Un pico aislado no cierra la valvula: el contador vuelve a cero si la zona deja de estar alta antes de llegar a 3 muestras. Al confirmar, `TaskSafety` registra `T_FIRST_HIGH`, `T_CRITICAL_CONFIRMED` y `T_COMMAND_SENT`, envia `SAFE_CLOSE` y pasa a `SYSTEM_SAFE_LATCHED`.
 
@@ -92,7 +92,7 @@ El sistema no reabre automaticamente aunque ambas zonas vuelvan a normal. El rea
 
 ## Politica fail-safe
 
-La politica implementada es cerrar ante condicion critica confirmada o falla de datos de sensor. Si `TaskSafety` deja de recibir muestras despues de haber recibido al menos una muestra valida durante `SENSOR_DATA_TIMEOUT_US = 350000`, entra en `SYSTEM_FAULT` y ordena `SAFE_CLOSE`.
+La politica implementada es cerrar ante condicion critica confirmada o falla de datos de sensor. Si `TaskSafety` deja de recibir muestras despues de haber recibido al menos una muestra valida durante `SENSOR_DATA_TIMEOUT_US = 350000`, entra en `SYSTEM_FAULT` y ordena `SAFE_CLOSE`. Una muestra recibida con edad mayor o igual a 350000 us tambien se rechaza como stale y entra en el mismo mecanismo; no puede clasificar, confirmar ni contribuir al rearme.
 
 La falla de creacion de colas o tareas se maneja en el arranque desde
 `src/system_app.cpp`. Cada tarea espera suspendida en el guard de activacion;

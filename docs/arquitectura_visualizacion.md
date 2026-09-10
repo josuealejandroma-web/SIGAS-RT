@@ -23,6 +23,8 @@ Wokwi / firmware ESP32 / FreeRTOS
 
 Godot envia solicitudes de escenario por `127.0.0.1:45702`, pero esos comandos son nombres declarados en `visualization/scenarios/scenario_catalog.json`. No son ordenes directas a valvula, buzzer ni LEDs.
 
+El bridge aplica reemplazo de solicitud: una nueva cancela el escenario activo con `terminate`, espera un tiempo acotado y usa `kill` solo como respaldo antes de iniciar el siguiente. Un unico worker conserva como maximo una solicitud pendiente. `shutdown()` detiene el proceso, une el lector de telemetria y cierra ambos sockets tambien ante excepcion o `KeyboardInterrupt`.
+
 ## Capas
 
 | Capa | Ruta | Responsabilidad |
@@ -60,11 +62,13 @@ La casa importada desde Blender incluye referencias visuales para ubicar el sist
 
 Estos elementos son geometria de soporte para observabilidad. La logica de seguridad permanece en firmware y la visualizacion solo refleja estados recibidos.
 
+Godot representa directamente las salidas recibidas; no vuelve a inferir LEDs o buzzer a partir de `state`. `OPEN` y `CLOSED` describen la orden del prototipo de software, no certifican la posicion fisica final de una valvula real.
+
 ## Contrato de telemetria
 
 El bridge acepta dos clases sin mezclarlas:
 
-- `state`: esquema SIGAS completo con estado ya decidido por `TaskSafety` y salida reportada por firmware;
+- `state`: esquema SIGAS completo con estado ya decidido por `TaskSafety` y salidas ordenadas `valve`, `buzzer`, `green_led` y `red_led` reportadas por firmware;
 - `timing`: medicion valida con timestamps de confirmacion y recepcion del actuador, sin campos inventados de estado, ADC, nivel o valvula.
 
 Una linea vacia, JSON nulo, objeto vacio, tipo incorrecto o campo esencial ausente se descarta. Solo una medicion valida puede producir `PASS` cuando `T_ACTUATOR_RECEIVED - T_CRITICAL_CONFIRMED <= 500000 us`, o `FAIL` cuando supera el deadline. La ausencia de medicion se presenta como `N/A`.

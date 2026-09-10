@@ -23,6 +23,8 @@ def valid_state_payload() -> dict:
         "reset": False,
         "valve": "OPEN",
         "buzzer": False,
+        "green_led": True,
+        "red_led": False,
         "sample_us": 1_500_000,
         "decision_us": 1_500_063,
         "deadline_us": 500_000,
@@ -118,6 +120,7 @@ class TelemetryParserTests(unittest.TestCase):
             "seq": "7",
             "zone1_adc": 410.0,
             "buzzer": "false",
+            "green_led": 1,
             "reset": 0,
             "state": 1,
         }

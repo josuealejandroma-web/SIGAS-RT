@@ -13,7 +13,7 @@
 | RT-07 | TT-01 a TT-06 | CSV separa confirmation, command, dispatch, post-confirmation y end-to-end. | PASS |
 
 Los resultados TT y RT-03 anteriores son evidencia historica. El arbol actual
-posterior a A04/A05/M05 necesita una nueva regresion Wokwi antes de considerar
+posterior a A04/A05/M05 y M01-M03 necesita una nueva regresion Wokwi antes de considerar
 vigentes sus resultados temporales finales.
 
 ## Regresiones locales de artefactos y medicion
@@ -39,6 +39,17 @@ vigentes sus resultados temporales finales.
 | A03-01 | A03 | La secuencia manual se identifica como `SYNTHETIC DEMO`. | PASS local |
 | A03-02 | A03 | El loader rechaza replay inexistente o JSONL malformado. | PASS local |
 | A03-03 | A03 | `RECORDED REPLAY` conserva orden y valida 13 eventos de una captura Wokwi identificada. | PASS local |
+
+## Regresiones M01-M04
+
+| Caso | Hallazgo | Evidencia | Resultado |
+| --- | --- | --- | --- |
+| M01-01 a M01-05 | M01 | Histeresis conserva condicion elevada despues de `HIGH`, sale bajo 1000 y mantiene zonas independientes. | PASS local |
+| M02-01 a M02-03, M02-07 | M02 | Solo `sequence` consecutivo confirma; los saltos reinician candidatos y el rollover `uint32_t` es continuo. | PASS local |
+| M02-04 a M02-06 | M02 | Edad menor al timeout se acepta; edad igual o mayor produce `FAULT`, `SAFE_CLOSE` y no alimenta rearme. | PASS local |
+| M03-01 a M03-04 | M03 | Politica unica genera salidas coherentes para `NORMAL`, `WARNING`, `SAFE_LATCHED` y `FAULT`. | PASS local |
+| M03-05 a M03-06 | M03 | Godot representa los campos recibidos; replay grabado y demo sintetica cumplen el mismo contrato. | PASS local |
+| M04-01 a M04-08 | M04 | Worker unico, reemplazo de solicitud, terminacion con fallback, joins y cierre de sockets verificados con fakes. | PASS local |
 
 Esta fase no ejecuto Wokwi CI ni reemplazo resultados temporales historicos. Las
 pruebas anteriores son locales y no modifican la logica critica del firmware.

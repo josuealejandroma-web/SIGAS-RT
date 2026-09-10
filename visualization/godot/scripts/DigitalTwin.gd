@@ -40,12 +40,14 @@ func apply_telemetry(frame: Dictionary) -> void:
 	var zone2_level := str(frame.get("zone2_level", "NORMAL"))
 	var valve := str(frame.get("valve", "CLOSED"))
 	var buzzer_on := bool(frame.get("buzzer", false))
+	var green_led_on := bool(frame.get("green_led", false))
+	var red_led_on := bool(frame.get("red_led", true))
 
 	_set_material(sensor_z1, _material_for_level(zone1_level))
 	_set_material(sensor_z2, _material_for_level(zone2_level))
 	_set_material(esp32, _material_for_state(state))
-	_set_material(led_green, status_materials["green_on"] if state == "SYSTEM_NORMAL" else status_materials["green_off"])
-	_set_material(led_red, status_materials["red_on"] if valve == "CLOSED" or state in ["SYSTEM_CRITICAL", "SYSTEM_SAFE_LATCHED", "SYSTEM_FAULT"] else status_materials["red_off"])
+	_set_material(led_green, status_materials["green_on"] if green_led_on else status_materials["green_off"])
+	_set_material(led_red, status_materials["red_on"] if red_led_on else status_materials["red_off"])
 	_set_material(buzzer, status_materials["buzzer_on"] if buzzer_on else status_materials["buzzer_off"])
 
 	var closed := valve == "CLOSED"

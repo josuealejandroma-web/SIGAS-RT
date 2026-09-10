@@ -38,6 +38,7 @@ enum class TransitionReason : uint8_t {
   kResetAccepted,
   kResetRejected,
   kSensorTimeout,
+  kStaleSample,
   kQueueFailure,
 };
 
@@ -55,6 +56,10 @@ struct SafetyDecision {
   ZoneLevel zone2Level;
   RequestedAction requestedAction;
   TransitionReason reason;
+  uint8_t commandedValveAngle;
+  bool commandedBuzzerOn;
+  bool commandedGreenLedOn;
+  bool commandedRedLedOn;
   uint64_t sampleTimestampUs;
   uint64_t decisionTimestampUs;
   uint64_t firstHighTimestampUs;

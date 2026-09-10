@@ -103,6 +103,8 @@ func _run() -> void:
 		"reset": false,
 		"valve": "CLOSED",
 		"buzzer": true,
+		"green_led": false,
+		"red_led": true,
 		"sample_us": 4000000,
 		"decision_us": 4000060,
 		"deadline_us": 500000

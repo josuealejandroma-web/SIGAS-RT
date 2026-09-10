@@ -68,6 +68,8 @@ const char *toString(TransitionReason reason) {
       return "RESET_REJECTED";
     case TransitionReason::kSensorTimeout:
       return "SENSOR_TIMEOUT";
+    case TransitionReason::kStaleSample:
+      return "STALE_SAMPLE";
     case TransitionReason::kQueueFailure:
       return "QUEUE_FAILURE";
   }

@@ -2,9 +2,11 @@
 
 #include <esp_timer.h>
 
+#include "actuator_policy.h"
 #include "config.h"
 #include "critical_timing.h"
 #include "fail_safe_policy.h"
+#include "safety_sample_policy.h"
 #include "system_app.h"
 #include "system_types.h"
 
@@ -28,6 +30,8 @@ struct SafetyRuntime {
   uint64_t commandSentTimestampUs = 0;
   uint64_t lastSampleTimestampUs = 0;
   uint64_t taskStartTimestampUs = 0;
+  uint32_t lastAcceptedSequence = 0;
+  bool hasAcceptedSequence = false;
 };
 
 bool isSafeAdc(uint16_t adcRaw) {
@@ -36,23 +40,6 @@ bool isSafeAdc(uint16_t adcRaw) {
 
 bool bothZonesSafe(const SensorSample &sample) {
   return isSafeAdc(sample.adcZone1) && isSafeAdc(sample.adcZone2);
-}
-
-ZoneLevel classifyZone(uint16_t adcRaw, ZoneLevel previousLevel) {
-  if (adcRaw >= ADC_CRITICAL_SIMULATION_ONLY) {
-    return ZoneLevel::kHigh;
-  }
-
-  if (previousLevel == ZoneLevel::kWarning &&
-      adcRaw >= ADC_WARNING_EXIT_SIMULATION_ONLY) {
-    return ZoneLevel::kWarning;
-  }
-
-  if (adcRaw >= ADC_WARNING_ENTER_SIMULATION_ONLY) {
-    return ZoneLevel::kWarning;
-  }
-
-  return ZoneLevel::kNormal;
 }
 
 bool criticalConfirmed(const SafetyRuntime &runtime) {
@@ -73,39 +60,11 @@ RequestedAction actionForState(SystemState state) {
 }
 
 ActuatorCommand buildActuatorCommand(const SafetyDecision &decision) {
-  const RequestedAction action = decision.requestedAction;
-
-  if (action == RequestedAction::kSafeClose) {
-    return ActuatorCommand{action,
-                           VALVE_CLOSED_ANGLE,
-                           true,
-                           false,
-                           true,
-                           decision.commandSentTimestampUs,
-                           decision.firstHighTimestampUs,
-                           decision.criticalConfirmedTimestampUs,
-                           0,
-                           decision.sequence};
-  }
-
-  if (action == RequestedAction::kWarning) {
-    return ActuatorCommand{action,
-                           VALVE_OPEN_ANGLE,
-                           false,
-                           true,
-                           true,
-                           decision.commandSentTimestampUs,
-                           decision.firstHighTimestampUs,
-                           decision.criticalConfirmedTimestampUs,
-                           0,
-                           decision.sequence};
-  }
-
-  return ActuatorCommand{action,
-                         VALVE_OPEN_ANGLE,
-                         false,
-                         true,
-                         false,
+  return ActuatorCommand{decision.requestedAction,
+                         decision.commandedValveAngle,
+                         decision.commandedBuzzerOn,
+                         decision.commandedGreenLedOn,
+                         decision.commandedRedLedOn,
                          decision.commandSentTimestampUs,
                          decision.firstHighTimestampUs,
                          decision.criticalConfirmedTimestampUs,
@@ -124,12 +83,18 @@ void logStateTransition(SystemState from, SystemState to,
 void publishDecision(SafetyTaskContext *context, const SensorSample &sample,
                      SafetyRuntime &runtime, TransitionReason reason) {
   const RequestedAction action = actionForState(runtime.state);
+  const ActuatorOutputs outputs =
+      outputsForAction(action, VALVE_OPEN_ANGLE, VALVE_CLOSED_ANGLE);
   SafetyDecision decision{
       runtime.state,
       runtime.zone1Level,
       runtime.zone2Level,
       action,
       reason,
+      outputs.valveAngle,
+      outputs.buzzerOn,
+      outputs.greenLedOn,
+      outputs.redLedOn,
       sample.timestampUs,
       static_cast<uint64_t>(esp_timer_get_time()),
       runtime.firstHighTimestampUs,
@@ -186,10 +151,10 @@ void enterCriticalThenLatch(SafetyRuntime &runtime, TransitionReason &reason) {
 }
 
 void clearCriticalHistory(SafetyRuntime &runtime) {
-  runtime.highCountZone1 = 0;
-  runtime.highCountZone2 = 0;
-  runtime.candidateStartZone1 = 0;
-  runtime.candidateStartZone2 = 0;
+  resetCriticalCandidates(runtime.highCountZone1,
+                          runtime.candidateStartZone1,
+                          runtime.highCountZone2,
+                          runtime.candidateStartZone2);
   runtime.firstHighTimestampUs = 0;
   runtime.criticalConfirmedTimestampUs = 0;
   runtime.commandSentTimestampUs = 0;
@@ -233,8 +198,16 @@ void updateFailSafeRecovery(SafetyRuntime &runtime,
 
 void updateStateFromSample(SafetyRuntime &runtime, const SensorSample &sample,
                            TransitionReason &reason) {
-  runtime.zone1Level = classifyZone(sample.adcZone1, runtime.zone1Level);
-  runtime.zone2Level = classifyZone(sample.adcZone2, runtime.zone2Level);
+  runtime.zone1Level = classifyZoneWithHysteresis(
+      sample.adcZone1, runtime.zone1Level,
+      ADC_WARNING_ENTER_SIMULATION_ONLY,
+      ADC_WARNING_EXIT_SIMULATION_ONLY,
+      ADC_CRITICAL_SIMULATION_ONLY);
+  runtime.zone2Level = classifyZoneWithHysteresis(
+      sample.adcZone2, runtime.zone2Level,
+      ADC_WARNING_ENTER_SIMULATION_ONLY,
+      ADC_WARNING_EXIT_SIMULATION_ONLY,
+      ADC_CRITICAL_SIMULATION_ONLY);
 
   updateCriticalCandidate(
       runtime.highCountZone1, runtime.candidateStartZone1,
@@ -291,6 +264,22 @@ void updateStateFromSample(SafetyRuntime &runtime, const SensorSample &sample,
   }
 }
 
+void enterSensorFault(SafetyTaskContext *context, SafetyRuntime &runtime,
+                      const SensorSample &sample, TransitionReason reason,
+                      const char *diagnostic) {
+  if (runtime.state == SystemState::kFault) {
+    return;
+  }
+
+  const SystemState previous = runtime.state;
+  runtime.state = stateAfterSensorTimeout(runtime.state);
+  runtime.recovery.enterFailSafe();
+  runtime.safeConditionsLogged = false;
+  Serial.println(diagnostic);
+  logStateTransition(previous, runtime.state, reason);
+  publishDecision(context, sample, runtime, reason);
+}
+
 void handleSensorTimeout(SafetyTaskContext *context, SafetyRuntime &runtime,
                          uint32_t sequence) {
   if (runtime.state == SystemState::kFault) {
@@ -306,16 +295,27 @@ void handleSensorTimeout(SafetyTaskContext *context, SafetyRuntime &runtime,
     return;
   }
 
-  const SystemState previous = runtime.state;
-  runtime.state = stateAfterSensorTimeout(runtime.state);
-  runtime.recovery.enterFailSafe();
-  runtime.safeConditionsLogged = false;
-  Serial.println("[FAULT] SENSOR_DATA_TIMEOUT");
-  logStateTransition(previous, runtime.state, TransitionReason::kSensorTimeout);
-
   SensorSample syntheticSample{0, 0, false, nowUs, sequence};
-  publishDecision(context, syntheticSample, runtime,
-                  TransitionReason::kSensorTimeout);
+  enterSensorFault(context, runtime, syntheticSample,
+                   TransitionReason::kSensorTimeout,
+                   "[FAULT] SENSOR_DATA_TIMEOUT");
+}
+
+void enforceSequenceContinuity(SafetyRuntime &runtime,
+                               uint32_t currentSequence) {
+  if (runtime.hasAcceptedSequence &&
+      !isConsecutiveSequence(runtime.lastAcceptedSequence,
+                             currentSequence)) {
+    Serial.printf("[SAFETY] SEQUENCE_GAP previous=%lu current=%lu; candidates reset\r\n",
+                  static_cast<unsigned long>(runtime.lastAcceptedSequence),
+                  static_cast<unsigned long>(currentSequence));
+    resetCriticalCandidates(runtime.highCountZone1,
+                            runtime.candidateStartZone1,
+                            runtime.highCountZone2,
+                            runtime.candidateStartZone2);
+  }
+  runtime.lastAcceptedSequence = currentSequence;
+  runtime.hasAcceptedSequence = true;
 }
 
 }  // namespace
@@ -337,7 +337,21 @@ void taskSafety(void *parameters) {
       continue;
     }
 
+    const uint64_t receivedUs = static_cast<uint64_t>(esp_timer_get_time());
+    if (!isFreshSample(receivedUs, sample.timestampUs,
+                       SENSOR_DATA_TIMEOUT_US)) {
+      Serial.printf("[SAFETY] stale sample rejected SEQ=%lu SAMPLE_T_US=%llu NOW_US=%llu\r\n",
+                    static_cast<unsigned long>(sample.sequence),
+                    static_cast<unsigned long long>(sample.timestampUs),
+                    static_cast<unsigned long long>(receivedUs));
+      enterSensorFault(context, runtime, sample,
+                       TransitionReason::kStaleSample,
+                       "[FAULT] SENSOR_DATA_STALE");
+      continue;
+    }
+
     runtime.lastSampleTimestampUs = sample.timestampUs;
+    enforceSequenceContinuity(runtime, sample.sequence);
     TransitionReason reason = TransitionReason::kStableNormal;
 
     const uint64_t taskStartUs = static_cast<uint64_t>(esp_timer_get_time());

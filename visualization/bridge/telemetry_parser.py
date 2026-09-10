@@ -69,6 +69,8 @@ def _validate_state_payload(payload: Any) -> dict[str, Any]:
         "reset",
         "valve",
         "buzzer",
+        "green_led",
+        "red_led",
         "sample_us",
         "decision_us",
         "deadline_us",
@@ -96,8 +98,9 @@ def _validate_state_payload(payload: Any) -> dict[str, Any]:
         raise TelemetryError("invalid valve state")
     if not isinstance(validated["reset"], bool):
         raise TelemetryError("reset must be a boolean")
-    if not isinstance(validated["buzzer"], bool):
-        raise TelemetryError("buzzer must be a boolean")
+    for key in ("buzzer", "green_led", "red_led"):
+        if not isinstance(validated[key], bool):
+            raise TelemetryError(f"{key} must be a boolean")
     for key in ("seq", "zone1_adc", "zone2_adc", "sample_us", "decision_us"):
         validated[key] = _json_int(validated[key], key, minimum=0)
     validated["deadline_us"] = _json_int(validated["deadline_us"], "deadline_us", minimum=1)

@@ -41,11 +41,11 @@ SYSTEM_FAULT -> SYSTEM_NORMAL         solo por reset manual seguro y estable
 | `ADC_CRITICAL_SIMULATION_ONLY` | 3000 | Candidato critico. |
 | `ADC_SAFE_EXIT_SIMULATION_ONLY` | 1000 | Condicion segura para rearme. |
 
-La histeresis evita oscilar entre `NORMAL` y `WARNING` cuando la lectura baja de 1400 pero se mantiene por encima de 1000.
+La histeresis evita oscilar entre `NORMAL` y `WARNING` cuando la lectura baja de 1400 pero se mantiene por encima de 1000. La memoria de condicion elevada tambien se conserva al pasar por `HIGH`: tanto `WARNING -> HIGH -> 1200` como `NORMAL -> HIGH -> 1200` terminan en `WARNING`. Solo una lectura menor que 1000 devuelve esa zona a `NORMAL`.
 
 ## Confirmacion
 
-La condicion critica se confirma con `CRITICAL_CONFIRMATION_SAMPLES = 3` muestras consecutivas `HIGH` en cualquiera de las dos zonas. Con `SENSOR_PERIOD = 100 ms`, la latencia de confirmacion esperada es aproximadamente 300 ms desde el inicio de la condicion alta sostenida.
+La condicion critica se confirma con `CRITICAL_CONFIRMATION_SAMPLES = 3` muestras consecutivas `HIGH` en cualquiera de las dos zonas. Consecutivas significa que `currentSequence == previousSequence + 1` con aritmetica `uint32_t`, incluido el rollover a cero. Un salto reinicia los dos candidatos antes de considerar la muestra actual; se registra el salto, pero no se genera `FAULT` solo por esa discontinuidad. Con `SENSOR_PERIOD = 100 ms`, la latencia de confirmacion esperada es aproximadamente 300 ms desde el inicio de la condicion alta sostenida.
 
 Un pico aislado genera candidato `HIGH`, pero no emite `SAFE_CLOSE` si no llega a 3 muestras.
 
@@ -67,7 +67,7 @@ enclavado.
 
 ## Fail-safe y fallas
 
-Ante timeout de datos de sensor, `TaskSafety` entra a `SYSTEM_FAULT` y ordena `SAFE_CLOSE`. El umbral es `SENSOR_DATA_TIMEOUT_US = 350000` despues de haber recibido al menos una muestra valida.
+Ante timeout de datos de sensor, `TaskSafety` entra a `SYSTEM_FAULT` y ordena `SAFE_CLOSE`. El umbral es `SENSOR_DATA_TIMEOUT_US = 350000` despues de haber recibido al menos una muestra valida. Cada muestra recibida tambien se compara con `esp_timer_get_time()`; una edad mayor o igual al mismo umbral, o un timestamp futuro invalido, se rechaza como stale antes de clasificar, confirmar o alimentar el rearme, y reutiliza el mecanismo `FAULT` con `SAFE_CLOSE`.
 
 Ante falla de creacion de cola o tarea FreeRTOS, `src/system_app.cpp` enclava
 el guard de arranque, mantiene las tareas creadas suspendidas y reaplica el

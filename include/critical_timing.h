@@ -30,6 +30,16 @@ inline bool criticalCandidateConfirmed(uint8_t counter,
   return counter >= requiredSamples;
 }
 
+inline void resetCriticalCandidates(uint8_t &countZone1,
+                                    uint64_t &candidateStartZone1,
+                                    uint8_t &countZone2,
+                                    uint64_t &candidateStartZone2) {
+  countZone1 = 0;
+  candidateStartZone1 = 0;
+  countZone2 = 0;
+  candidateStartZone2 = 0;
+}
+
 inline uint64_t selectConfirmedCandidateStart(
     uint8_t countZone1, uint64_t candidateStartZone1,
     uint8_t countZone2, uint64_t candidateStartZone2,

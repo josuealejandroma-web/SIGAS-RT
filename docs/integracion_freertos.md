@@ -46,22 +46,26 @@ Se respeta el periodo de sensores documentado previamente. La medicion temporal 
 | `diagnosticsSampleQueue` | `TaskSensors` | `TaskDiagnostics` | `SensorSample` |
 | `diagnosticsDecisionQueue` | `TaskSafety` | `TaskDiagnostics` | `SafetyDecision` |
 
-Las colas tienen longitud 1 y usan `xQueueOverwrite()` para mantener el ultimo dato valido sin acumular backlog. No se usa polling continuo ni busy waiting entre tareas.
+Las colas tienen longitud 1 y usan `xQueueOverwrite()` para mantener el ultimo dato valido sin acumular backlog. Como esta semantica puede omitir muestras, `TaskSafety` valida `SensorSample.sequence`: un salto invalida ambos candidatos `HIGH` antes de contar la muestra nueva. No se usa polling continuo ni busy waiting entre tareas.
 
 ## 6. Estructuras intercambiadas
 
 | Estructura | Campos principales |
 | --- | --- |
 | `SensorSample` | `adcZone1`, `adcZone2`, `resetPressed`, `timestampUs`, `sequence` |
-| `SafetyDecision` | `systemState`, `zone1Level`, `zone2Level`, `requestedAction`, `reason`, timestamps, `sequence` |
+| `SafetyDecision` | Estado, niveles, accion, razon, salidas ordenadas (`commandedValveAngle`, buzzer y LEDs), timestamps y `sequence` |
 | `ActuatorCommand` | `action`, `valveAngle`, `buzzerOn`, `greenLedOn`, `redLedOn`, timestamps, `sequence` |
 
-Estas estructuras separan adquisicion, decision y actuacion.
+Estas estructuras separan adquisicion, decision y actuacion. La politica de salidas se calcula una sola vez en `TaskSafety`, se copia de forma coherente a `SafetyDecision` y `ActuatorCommand`, y se aplica exclusivamente en `TaskActuator`. Diagnostico no vuelve a decidir las salidas.
 
 Los candidatos criticos se mantienen por zona. Si una zona deja `HIGH` antes
 de confirmar, su contador y su timestamp candidato se reinician. Cuando una o
 ambas zonas confirman, `T_FIRST_HIGH` toma el inicio del candidato confirmado;
 si ambas confirman simultaneamente se elige el mas antiguo.
+
+Antes de procesar, la edad de la muestra se calcula con el reloj monotono de
+`esp_timer_get_time()`. Una edad `>= SENSOR_DATA_TIMEOUT_US` no actualiza
+niveles, candidatos ni rearme: produce `SYSTEM_FAULT` y `SAFE_CLOSE`.
 
 `T_COMMAND_SENT` se captura inmediatamente antes de publicar en
 `actuatorQueue`, se copia con el mismo valor en `SafetyDecision` y

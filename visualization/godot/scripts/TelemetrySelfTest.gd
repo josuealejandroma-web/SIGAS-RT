@@ -16,6 +16,7 @@ func _run() -> void:
 	_test_timing_contract()
 	_test_recorded_replay_loader()
 	await _test_main_source_modes()
+	await _test_commanded_outputs()
 	if _failed:
 		print("GODOT_TELEMETRY_SELF_TEST: FAIL")
 		quit(1)
@@ -128,6 +129,50 @@ func _test_main_source_modes() -> void:
 	scene.queue_free()
 
 
+func _test_commanded_outputs() -> void:
+	var packed: PackedScene = load("res://scenes/Main.tscn")
+	var scene: Node = packed.instantiate()
+	root.add_child(scene)
+	await process_frame
+	await process_frame
+	var twin: Node3D = scene.get_node("DigitalTwin")
+	var transmitted := _valid_state_payload()
+	transmitted["state"] = "SYSTEM_WARNING"
+	transmitted["action"] = "WARNING"
+	transmitted["green_led"] = false
+	transmitted["red_led"] = false
+	twin.apply_telemetry(transmitted)
+	_check(
+		"M03-05",
+		twin.led_green.material_override == twin.status_materials["green_off"]
+			and twin.led_red.material_override == twin.status_materials["red_off"],
+		"Godot derivo LEDs desde el estado en vez de representar los campos recibidos"
+	)
+
+	var synthetic_ok := true
+	for frame in scene.synthetic_frames:
+		if frame["type"] == "state":
+			synthetic_ok = synthetic_ok and _outputs_match_action(frame)
+	var replay_ok: bool = scene.recorded_replay.frames.size() == 13
+	for item in scene.recorded_replay.frames:
+		var payload: Dictionary = item["payload"]
+		if payload["type"] == "state":
+			replay_ok = replay_ok and _outputs_match_action(payload)
+	_check("M03-06", synthetic_ok and replay_ok, "demo sintetica o replay incumple el contrato de salidas")
+	scene.queue_free()
+
+
+func _outputs_match_action(frame: Dictionary) -> bool:
+	match frame["action"]:
+		"NORMAL":
+			return frame["valve"] == "OPEN" and not frame["buzzer"] and frame["green_led"] and not frame["red_led"]
+		"WARNING":
+			return frame["valve"] == "OPEN" and not frame["buzzer"] and frame["green_led"] and frame["red_led"]
+		"SAFE_CLOSE":
+			return frame["valve"] == "CLOSED" and frame["buzzer"] and not frame["green_led"] and frame["red_led"]
+	return false
+
+
 func _valid_state_payload() -> Dictionary:
 	return {
 		"type": "state",
@@ -142,6 +187,8 @@ func _valid_state_payload() -> Dictionary:
 		"reset": false,
 		"valve": "OPEN",
 		"buzzer": false,
+		"green_led": true,
+		"red_led": false,
 		"sample_us": 1500000,
 		"decision_us": 1500063,
 		"deadline_us": 500000

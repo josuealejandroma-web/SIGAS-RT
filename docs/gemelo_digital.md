@@ -45,7 +45,9 @@ El firmware de visualizacion emite lineas:
 @SIGAS {"type":"state",...}
 ```
 
-El bridge separa eventos de estado y eventos temporales. Un estado exige el esquema `type`, `seq`, `state`, `action`, `reason`, ADC y nivel de ambas zonas, `reset`, `valve`, `buzzer`, `sample_us`, `decision_us` y `deadline_us`, todos con tipos y rangos validos. Un evento `[TIMING]` exige `SEQ`, `T_CRITICAL_CONFIRMED`, `T_ACTUATOR_RECEIVED` y `DEADLINE_US`; `response_us` y `PASS`/`FAIL` se derivan de esos timestamps y nunca de valores por defecto.
+El bridge separa eventos de estado y eventos temporales. Un estado exige el esquema `type`, `seq`, `state`, `action`, `reason`, ADC y nivel de ambas zonas, `reset`, `valve`, `buzzer`, `green_led`, `red_led`, `sample_us`, `decision_us` y `deadline_us`, todos con tipos y rangos validos. Estas salidas proceden de la misma decision que construye `ActuatorCommand`; Godot las representa sin recalcularlas desde el estado. Un evento `[TIMING]` exige `SEQ`, `T_CRITICAL_CONFIRMED`, `T_ACTUATOR_RECEIVED` y `DEADLINE_US`; `response_us` y `PASS`/`FAIL` se derivan de esos timestamps y nunca de valores por defecto.
+
+El bridge ejecuta un unico worker. Una solicitud nueva reemplaza la pendiente y cancela limpiamente el proceso activo antes de iniciar otro (`terminate`, espera acotada y `kill` de respaldo). El cierre centralizado une el lector de telemetria y cierra listener y socket de salida incluso ante excepciones o interrupcion.
 
 El JSON validado se reenvia a Godot por `127.0.0.1:45701/UDP`. Godot vuelve a validar el contrato antes de renovar la frescura o representar datos. Las solicitudes de escenario salen por `127.0.0.1:45702/UDP`.
 
@@ -67,6 +69,7 @@ Los umbrales consideran la emision nominal aproximada cada 500 ms: `STALE` equiv
 - No se almacena ni imprime el token.
 - Godot no envia comandos directos a valvula, buzzer o LEDs.
 - El bridge solo acepta comandos declarados en `scenario_catalog.json`.
+- `valve`, `buzzer` y LEDs representan salidas ordenadas por software; no certifican movimiento fisico completado.
 - La visualizacion no reemplaza la evidencia temporal de `docs/analisis_temporal.md`.
 
 ## Validacion local
@@ -120,7 +123,7 @@ tools\godot\godot.cmd --headless --path visualization\godot --import
 ## Limitaciones encontradas
 
 - Wokwi CLI mezcla anotaciones del escenario con stdout y puede fragmentar lineas JSON cuando se parsea stdout directamente. Se corrigio el bridge para leer telemetria desde `--serial-log-file` y acumular fragmentos hasta salto de linea.
-- Los logs seriales completos siguen siendo artefactos locales ignorados por Git. El JSONL versionado contiene solo 12 estados y un evento temporal validos extraidos, en orden, de `simulation/wokwi-serial-visualization.log`; la metadata conserva el SHA-256 de la captura fuente. Es material historico de visualizacion, no evidencia temporal vigente ni sustituto de una nueva regresion Wokwi.
+- Los logs seriales completos siguen siendo artefactos locales ignorados por Git. El JSONL versionado contiene solo 12 estados y un evento temporal extraidos, en orden, de `simulation/wokwi-serial-visualization.log`; la metadata conserva el SHA-256 de la captura fuente. Los cuatro campos de salida del replay estan normalizados al contrato de salidas ordenadas vigente, sin alterar la captura fuente ni sus resultados temporales. Es material historico de visualizacion, no evidencia temporal vigente ni sustituto de una nueva regresion Wokwi.
 - Godot portable se mantiene en `tools/godot/`, ignorado por Git. No se versionan binarios.
 - La casa final se genera en Blender y se importa como GLB; las esferas de gas se instancian en Godot sobre markers Blender porque son una visualizacion conceptual animada, no geometria estructural de la vivienda.
 - El GLB conserva muros continuos y una escalera visual que termina bajo la losa. Godot usa portales de proximidad en puntos seguros para completar puertas y cambio de piso sin atravesar visualmente geometria ni modificar Blender.

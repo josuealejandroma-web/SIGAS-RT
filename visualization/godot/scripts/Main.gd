@@ -41,28 +41,32 @@ var synthetic_frames := [
 		"type": "state", "seq": 1, "state": "SYSTEM_STARTUP", "action": "SAFE_CLOSE",
 		"reason": "SYNTHETIC_BOOT", "zone1_adc": 410, "zone2_adc": 410,
 		"zone1_level": "NORMAL", "zone2_level": "NORMAL", "reset": false,
-		"valve": "CLOSED", "buzzer": true, "sample_us": 100000,
+		"valve": "CLOSED", "buzzer": true, "green_led": false, "red_led": true,
+		"sample_us": 100000,
 		"decision_us": 100060, "deadline_us": 500000
 	},
 	{
 		"type": "state", "seq": 6, "state": "SYSTEM_NORMAL", "action": "NORMAL",
 		"reason": "SYNTHETIC_NORMAL", "zone1_adc": 420, "zone2_adc": 405,
 		"zone1_level": "NORMAL", "zone2_level": "NORMAL", "reset": false,
-		"valve": "OPEN", "buzzer": false, "sample_us": 600000,
+		"valve": "OPEN", "buzzer": false, "green_led": true, "red_led": false,
+		"sample_us": 600000,
 		"decision_us": 600060, "deadline_us": 500000
 	},
 	{
 		"type": "state", "seq": 11, "state": "SYSTEM_WARNING", "action": "WARNING",
 		"reason": "SYNTHETIC_WARNING", "zone1_adc": 2048, "zone2_adc": 430,
 		"zone1_level": "WARNING", "zone2_level": "NORMAL", "reset": false,
-		"valve": "OPEN", "buzzer": true, "sample_us": 1100000,
+		"valve": "OPEN", "buzzer": false, "green_led": true, "red_led": true,
+		"sample_us": 1100000,
 		"decision_us": 1100060, "deadline_us": 500000
 	},
 	{
 		"type": "state", "seq": 14, "state": "SYSTEM_CRITICAL", "action": "SAFE_CLOSE",
 		"reason": "SYNTHETIC_CRITICAL", "zone1_adc": 3420, "zone2_adc": 445,
 		"zone1_level": "HIGH", "zone2_level": "NORMAL", "reset": false,
-		"valve": "CLOSED", "buzzer": true, "sample_us": 1400000,
+		"valve": "CLOSED", "buzzer": true, "green_led": false, "red_led": true,
+		"sample_us": 1400000,
 		"decision_us": 1400060, "deadline_us": 500000
 	},
 	{
@@ -74,7 +78,8 @@ var synthetic_frames := [
 		"type": "state", "seq": 16, "state": "SYSTEM_SAFE_LATCHED", "action": "SAFE_CLOSE",
 		"reason": "SYNTHETIC_LATCHED", "zone1_adc": 3100, "zone2_adc": 450,
 		"zone1_level": "HIGH", "zone2_level": "NORMAL", "reset": false,
-		"valve": "CLOSED", "buzzer": true, "sample_us": 1600000,
+		"valve": "CLOSED", "buzzer": true, "green_led": false, "red_led": true,
+		"sample_us": 1600000,
 		"decision_us": 1600060, "deadline_us": 500000
 	}
 ]

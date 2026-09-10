@@ -18,14 +18,6 @@ void runControlledDiagnosticsLoad() {
 }
 
 #ifdef SIGAS_RT_VISUALIZATION
-const char *valveForAction(RequestedAction action) {
-  return action == RequestedAction::kSafeClose ? "CLOSED" : "OPEN";
-}
-
-const char *buzzerForAction(RequestedAction action) {
-  return action == RequestedAction::kNormal ? "false" : "true";
-}
-
 void publishVisualizationTelemetry(const SensorSample &sample,
                                    const SafetyDecision &decision,
                                    bool hasSample, bool hasDecision) {
@@ -33,7 +25,7 @@ void publishVisualizationTelemetry(const SensorSample &sample,
     return;
   }
 
-  Serial.printf("@SIGAS {\"type\":\"state\",\"seq\":%lu,\"state\":\"%s\",\"action\":\"%s\",\"reason\":\"%s\",\"zone1_adc\":%u,\"zone2_adc\":%u,\"zone1_level\":\"%s\",\"zone2_level\":\"%s\",\"reset\":%s,\"valve\":\"%s\",\"buzzer\":%s,\"sample_us\":%llu,\"decision_us\":%llu,\"deadline_us\":500000}\r\n",
+  Serial.printf("@SIGAS {\"type\":\"state\",\"seq\":%lu,\"state\":\"%s\",\"action\":\"%s\",\"reason\":\"%s\",\"zone1_adc\":%u,\"zone2_adc\":%u,\"zone1_level\":\"%s\",\"zone2_level\":\"%s\",\"reset\":%s,\"valve\":\"%s\",\"buzzer\":%s,\"green_led\":%s,\"red_led\":%s,\"sample_us\":%llu,\"decision_us\":%llu,\"deadline_us\":500000}\r\n",
                 static_cast<unsigned long>(decision.sequence),
                 toString(decision.systemState),
                 toString(decision.requestedAction),
@@ -43,8 +35,11 @@ void publishVisualizationTelemetry(const SensorSample &sample,
                 toString(decision.zone1Level),
                 toString(decision.zone2Level),
                 sample.resetPressed ? "true" : "false",
-                valveForAction(decision.requestedAction),
-                buzzerForAction(decision.requestedAction),
+                decision.commandedValveAngle == VALVE_CLOSED_ANGLE ? "CLOSED"
+                                                                   : "OPEN",
+                decision.commandedBuzzerOn ? "true" : "false",
+                decision.commandedGreenLedOn ? "true" : "false",
+                decision.commandedRedLedOn ? "true" : "false",
                 static_cast<unsigned long long>(sample.timestampUs),
                 static_cast<unsigned long long>(decision.decisionTimestampUs));
 }

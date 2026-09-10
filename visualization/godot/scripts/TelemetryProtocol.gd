@@ -25,6 +25,8 @@ const STATE_FIELDS := [
 	"reset",
 	"valve",
 	"buzzer",
+	"green_led",
+	"red_led",
 	"sample_us",
 	"decision_us",
 	"deadline_us"
@@ -64,6 +66,8 @@ static func _validate_state(payload: Dictionary) -> Dictionary:
 		return {}
 	if typeof(payload["reset"]) != TYPE_BOOL or typeof(payload["buzzer"]) != TYPE_BOOL:
 		return {}
+	if typeof(payload["green_led"]) != TYPE_BOOL or typeof(payload["red_led"]) != TYPE_BOOL:
+		return {}
 
 	var seq = _normalized_integer(payload["seq"], 0)
 	var zone1_adc = _normalized_integer(payload["zone1_adc"], 0, 4095)
@@ -89,6 +93,8 @@ static func _validate_state(payload: Dictionary) -> Dictionary:
 		"reset": payload["reset"],
 		"valve": payload["valve"],
 		"buzzer": payload["buzzer"],
+		"green_led": payload["green_led"],
+		"red_led": payload["red_led"],
 		"sample_us": sample_us,
 		"decision_us": decision_us,
 		"deadline_us": deadline_us
