@@ -29,6 +29,14 @@ jobs:
       - name: Bridge unit tests
         run: python -m unittest discover visualization/bridge/tests
 
+      - name: PlatformIO artifact selection sequence
+        run: python scripts/verify_artifact_selection.py
+
+      - name: Observed execution-time summary
+        run: |
+          python -m unittest discover simulation/tests
+          python simulation/generate_wcet_summary.py --check
+
       - name: Critical fail-safe host tests
         run: |
           mkdir -p .pio/safe-fail-safe-tests

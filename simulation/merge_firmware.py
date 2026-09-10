@@ -6,8 +6,7 @@ Import("env")
 
 
 def merge_firmware(source, target, env):
-    project_dir = Path(env.subst("$PROJECT_DIR"))
-    build_dir = Path(env.subst("$BUILD_DIR"))
+    build_dir = Path(env.subst("$BUILD_DIR")).resolve()
     platformio_dir = Path.home() / ".platformio"
     boot_app0 = (
         platformio_dir
@@ -18,7 +17,20 @@ def merge_firmware(source, target, env):
         / "boot_app0.bin"
     )
     esptool = platformio_dir / "packages" / "tool-esptoolpy" / "esptool.py"
-    output = project_dir / "simulation" / "firmware-merged.bin"
+    output = build_dir / "firmware-merged.bin"
+
+    required_inputs = [
+        build_dir / "bootloader.bin",
+        build_dir / "partitions.bin",
+        build_dir / "firmware.bin",
+        build_dir / "firmware.elf",
+        boot_app0,
+        esptool,
+    ]
+    missing = [path for path in required_inputs if not path.is_file()]
+    if missing:
+        missing_text = ", ".join(str(path) for path in missing)
+        raise RuntimeError(f"Missing build artifacts: {missing_text}")
 
     command = [
         sys.executable,
@@ -45,6 +57,8 @@ def merge_firmware(source, target, env):
     ]
 
     subprocess.run(command, check=True)
+    if not output.is_file():
+        raise RuntimeError(f"Merged firmware was not generated: {output}")
 
 
 env.AddPostAction("$BUILD_DIR/${PROGNAME}.bin", merge_firmware)

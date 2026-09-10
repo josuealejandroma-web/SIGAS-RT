@@ -3,6 +3,7 @@
 #include <esp_timer.h>
 
 #include "config.h"
+#include "critical_timing.h"
 #include "fail_safe_policy.h"
 #include "system_app.h"
 #include "system_types.h"
@@ -16,6 +17,8 @@ struct SafetyRuntime {
   ZoneLevel zone2Level = ZoneLevel::kNormal;
   uint8_t highCountZone1 = 0;
   uint8_t highCountZone2 = 0;
+  uint64_t candidateStartZone1 = 0;
+  uint64_t candidateStartZone2 = 0;
   uint8_t startupSafeSamples = 0;
   FailSafeRecovery recovery{SAFE_RESET_CONFIRMATION_SAMPLES,
                             RESET_DEBOUNCE_SAMPLES};
@@ -52,27 +55,11 @@ ZoneLevel classifyZone(uint16_t adcRaw, ZoneLevel previousLevel) {
   return ZoneLevel::kNormal;
 }
 
-void updateHighCounter(uint8_t &counter, bool high, uint64_t timestampUs,
-                       SafetyRuntime &runtime) {
-  if (high) {
-    if (counter == 0 && runtime.firstHighTimestampUs == 0) {
-      runtime.firstHighTimestampUs = timestampUs;
-      Serial.printf("[SAFETY] T_FIRST_HIGH=%llu\r\n",
-                    static_cast<unsigned long long>(
-                        runtime.firstHighTimestampUs));
-    }
-    if (counter < CRITICAL_CONFIRMATION_SAMPLES) {
-      ++counter;
-    }
-    return;
-  }
-
-  counter = 0;
-}
-
 bool criticalConfirmed(const SafetyRuntime &runtime) {
-  return runtime.highCountZone1 >= CRITICAL_CONFIRMATION_SAMPLES ||
-         runtime.highCountZone2 >= CRITICAL_CONFIRMATION_SAMPLES;
+  return criticalCandidateConfirmed(runtime.highCountZone1,
+                                    CRITICAL_CONFIRMATION_SAMPLES) ||
+         criticalCandidateConfirmed(runtime.highCountZone2,
+                                    CRITICAL_CONFIRMATION_SAMPLES);
 }
 
 RequestedAction actionForState(SystemState state) {
@@ -137,16 +124,6 @@ void logStateTransition(SystemState from, SystemState to,
 void publishDecision(SafetyTaskContext *context, const SensorSample &sample,
                      SafetyRuntime &runtime, TransitionReason reason) {
   const RequestedAction action = actionForState(runtime.state);
-  const uint64_t commandSentUs = static_cast<uint64_t>(esp_timer_get_time());
-  if (action == RequestedAction::kSafeClose &&
-      runtime.criticalConfirmedTimestampUs > 0 &&
-      runtime.commandSentTimestampUs == 0) {
-    runtime.commandSentTimestampUs = commandSentUs;
-    Serial.printf("[SAFETY] T_COMMAND_SENT=%llu\r\n",
-                  static_cast<unsigned long long>(
-                      runtime.commandSentTimestampUs));
-  }
-
   SafetyDecision decision{
       runtime.state,
       runtime.zone1Level,
@@ -157,20 +134,34 @@ void publishDecision(SafetyTaskContext *context, const SensorSample &sample,
       static_cast<uint64_t>(esp_timer_get_time()),
       runtime.firstHighTimestampUs,
       runtime.criticalConfirmedTimestampUs,
-      action == RequestedAction::kSafeClose && runtime.commandSentTimestampUs > 0
-          ? runtime.commandSentTimestampUs
-          : commandSentUs,
+      0,
       sample.sequence,
   };
 
   ActuatorCommand command = buildActuatorCommand(decision);
-  xQueueOverwrite(context->actuatorQueue, &command);
+  const uint64_t commandSentUs =
+      static_cast<uint64_t>(esp_timer_get_time());
+  stampCommandPublication(decision, command, commandSentUs);
+  const BaseType_t publishResult =
+      xQueueOverwrite(context->actuatorQueue, &command);
+  if (publishResult == pdPASS && action == RequestedAction::kSafeClose &&
+      runtime.criticalConfirmedTimestampUs > 0 &&
+      runtime.commandSentTimestampUs == 0) {
+    runtime.commandSentTimestampUs = commandSentUs;
+    Serial.printf("[SAFETY] T_COMMAND_SENT=%llu\r\n",
+                  static_cast<unsigned long long>(
+                      runtime.commandSentTimestampUs));
+  }
   xQueueOverwrite(context->diagnosticsDecisionQueue, &decision);
 }
 
 void enterCriticalThenLatch(SafetyRuntime &runtime, TransitionReason &reason) {
   const SystemState previous = runtime.state;
   runtime.state = SystemState::kCritical;
+  runtime.firstHighTimestampUs = selectConfirmedCandidateStart(
+      runtime.highCountZone1, runtime.candidateStartZone1,
+      runtime.highCountZone2, runtime.candidateStartZone2,
+      CRITICAL_CONFIRMATION_SAMPLES);
   runtime.criticalConfirmedTimestampUs =
       static_cast<uint64_t>(esp_timer_get_time());
   reason = TransitionReason::kCriticalConfirmed;
@@ -178,6 +169,9 @@ void enterCriticalThenLatch(SafetyRuntime &runtime, TransitionReason &reason) {
   Serial.printf("[SAFETY] HIGH confirmed z1=%u/%u z2=%u/%u\r\n",
                 runtime.highCountZone1, CRITICAL_CONFIRMATION_SAMPLES,
                 runtime.highCountZone2, CRITICAL_CONFIRMATION_SAMPLES);
+  Serial.printf("[SAFETY] T_FIRST_HIGH=%llu\r\n",
+                static_cast<unsigned long long>(
+                    runtime.firstHighTimestampUs));
   Serial.printf("[SAFETY] T_CRITICAL_CONFIRMED=%llu\r\n",
                 static_cast<unsigned long long>(
                     runtime.criticalConfirmedTimestampUs));
@@ -194,6 +188,8 @@ void enterCriticalThenLatch(SafetyRuntime &runtime, TransitionReason &reason) {
 void clearCriticalHistory(SafetyRuntime &runtime) {
   runtime.highCountZone1 = 0;
   runtime.highCountZone2 = 0;
+  runtime.candidateStartZone1 = 0;
+  runtime.candidateStartZone2 = 0;
   runtime.firstHighTimestampUs = 0;
   runtime.criticalConfirmedTimestampUs = 0;
   runtime.commandSentTimestampUs = 0;
@@ -240,12 +236,14 @@ void updateStateFromSample(SafetyRuntime &runtime, const SensorSample &sample,
   runtime.zone1Level = classifyZone(sample.adcZone1, runtime.zone1Level);
   runtime.zone2Level = classifyZone(sample.adcZone2, runtime.zone2Level);
 
-  updateHighCounter(runtime.highCountZone1,
-                    runtime.zone1Level == ZoneLevel::kHigh, sample.timestampUs,
-                    runtime);
-  updateHighCounter(runtime.highCountZone2,
-                    runtime.zone2Level == ZoneLevel::kHigh, sample.timestampUs,
-                    runtime);
+  updateCriticalCandidate(
+      runtime.highCountZone1, runtime.candidateStartZone1,
+      runtime.zone1Level == ZoneLevel::kHigh, sample.timestampUs,
+      CRITICAL_CONFIRMATION_SAMPLES);
+  updateCriticalCandidate(
+      runtime.highCountZone2, runtime.candidateStartZone2,
+      runtime.zone2Level == ZoneLevel::kHigh, sample.timestampUs,
+      CRITICAL_CONFIRMATION_SAMPLES);
 
   if (requiresManualRearm(runtime.state)) {
     updateFailSafeRecovery(runtime, sample, reason);
@@ -312,7 +310,6 @@ void handleSensorTimeout(SafetyTaskContext *context, SafetyRuntime &runtime,
   runtime.state = stateAfterSensorTimeout(runtime.state);
   runtime.recovery.enterFailSafe();
   runtime.safeConditionsLogged = false;
-  runtime.commandSentTimestampUs = nowUs;
   Serial.println("[FAULT] SENSOR_DATA_TIMEOUT");
   logStateTransition(previous, runtime.state, TransitionReason::kSensorTimeout);
 

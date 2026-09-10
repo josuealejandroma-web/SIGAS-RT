@@ -70,6 +70,14 @@ Invoke-Step "Python bridge tests" {
   python -m unittest discover visualization\bridge\tests
 }
 
+Invoke-Step "Observed execution-time summary tests" {
+  python -m unittest discover simulation\tests
+}
+
+Invoke-Step "Observed execution-time summary consistency" {
+  python simulation\generate_wcet_summary.py --check
+}
+
 Invoke-Step "Critical fail-safe host tests" {
   powershell -ExecutionPolicy Bypass -File scripts\verify_fail_safe.ps1
 }
@@ -103,6 +111,10 @@ Invoke-Step "Build firmware visualizacion" {
   .\.venv\Scripts\platformio.exe run -e esp32doit-devkit-v1-visualization
 }
 
+Invoke-Step "PlatformIO artifact selection sequence" {
+  python scripts\verify_artifact_selection.py
+}
+
 if (-not $SkipWokwi) {
   $token = [Environment]::GetEnvironmentVariable("WOKWI_CLI_TOKEN", "Process")
   if ([string]::IsNullOrWhiteSpace($token)) {
@@ -116,8 +128,9 @@ if (-not $SkipWokwi) {
   }
   Write-Host "WOKWI_CLI_TOKEN: configurado"
 
-  New-Item -ItemType Directory -Force .pio\build\esp32doit-devkit-v1 | Out-Null
-  Copy-Item .pio\build\esp32doit-devkit-v1-visualization\firmware.elf .pio\build\esp32doit-devkit-v1\firmware.elf -Force
+  Invoke-Step "Prepare Wokwi visualization artifacts" {
+    python visualization\bridge\firmware_artifacts.py --repo-root $RepoRoot --simulation-dir simulation --environment esp32doit-devkit-v1-visualization
+  }
   Invoke-Step "Wokwi visual safe telemetry" {
     Push-Location simulation
     try {
@@ -139,6 +152,10 @@ if (-not $SkipWokwi) {
       exit $LASTEXITCODE
     }
     .\.venv\Scripts\platformio.exe run -e esp32doit-devkit-v1
+    if ($LASTEXITCODE -ne 0) {
+      exit $LASTEXITCODE
+    }
+    python visualization\bridge\firmware_artifacts.py --repo-root $RepoRoot --simulation-dir simulation --environment esp32doit-devkit-v1
   }
 }
 

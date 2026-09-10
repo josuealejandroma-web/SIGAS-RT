@@ -1,6 +1,7 @@
 #include <cstdio>
 
 #include "boot_guard.h"
+#include "critical_timing.h"
 #include "fail_safe_policy.h"
 
 namespace {
@@ -106,6 +107,43 @@ void testPartialInitializationLatchesSafeClose() {
             !guard.runtimeEnabled() && guard.safeCloseRequired());
 }
 
+void testDiscardedSpikeDoesNotDefineFirstHigh() {
+  uint8_t countZone1 = 0;
+  uint8_t countZone2 = 0;
+  uint64_t candidateStartZone1 = 0;
+  uint64_t candidateStartZone2 = 0;
+
+  sigas::updateCriticalCandidate(countZone1, candidateStartZone1, true,
+                                 100, 3);
+  sigas::updateCriticalCandidate(countZone1, candidateStartZone1, false,
+                                 200, 3);
+  const uint64_t sustainedCandidateTimestamps[] = {300, 400, 500};
+  for (uint64_t timestamp : sustainedCandidateTimestamps) {
+    sigas::updateCriticalCandidate(countZone2, candidateStartZone2, true,
+                                   timestamp, 3);
+  }
+
+  const uint64_t firstHigh = sigas::selectConfirmedCandidateStart(
+      countZone1, candidateStartZone1, countZone2, candidateStartZone2, 3);
+  check("A05-FIRST-HIGH-SPIKE",
+        countZone1 == 0 && candidateStartZone1 == 0 && firstHigh == 300);
+}
+
+void testSimultaneousConfirmationUsesOldestCandidate() {
+  const uint64_t firstHigh = sigas::selectConfirmedCandidateStart(
+      3, 120, 3, 100, 3);
+  check("A05-FIRST-HIGH-BOTH", firstHigh == 100);
+}
+
+void testCommandPublicationTimestampIsCoherent() {
+  sigas::SafetyDecision decision{};
+  sigas::ActuatorCommand command{};
+  sigas::stampCommandPublication(decision, command, 123456);
+  check("A05-COMMAND-SENT",
+        decision.commandSentTimestampUs == 123456 &&
+            command.commandSentTimestampUs == 123456);
+}
+
 }  // namespace
 
 int main() {
@@ -115,5 +153,8 @@ int main() {
   testSafeSamplesWithoutResetStayClosed();
   testDeliberateSafeRearmReturnsToNormal();
   testPartialInitializationLatchesSafeClose();
+  testDiscardedSpikeDoesNotDefineFirstHigh();
+  testSimultaneousConfirmationUsesOldestCandidate();
+  testCommandPublicationTimestampIsCoherent();
   return failures == 0 ? 0 : 1;
 }

@@ -12,6 +12,8 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RootDir = Split-Path -Parent $ScriptDir
 $ResultsDir = Join-Path $ScriptDir "results"
 New-Item -ItemType Directory -Force -Path $ResultsDir | Out-Null
+$ArtifactSelector = Join-Path $RootDir "visualization\bridge\firmware_artifacts.py"
+$WcetSummaryGenerator = Join-Path $ScriptDir "generate_wcet_summary.py"
 
 $Pio = Join-Path $RootDir ".venv\Scripts\platformio.exe"
 if (-not (Test-Path $Pio)) {
@@ -37,6 +39,10 @@ function Invoke-Build {
     & $Pio run -e $EnvironmentName | Out-Host
     if ($LASTEXITCODE -ne 0) {
       throw "PlatformIO fallo para $EnvironmentName"
+    }
+    & python $ArtifactSelector --repo-root $RootDir --simulation-dir $ScriptDir --environment $EnvironmentName
+    if ($LASTEXITCODE -ne 0) {
+      throw "Seleccion de artefactos fallo para $EnvironmentName"
     }
   } finally {
     Pop-Location
@@ -236,9 +242,14 @@ for ($i = 0; $i -lt $LoadRuns; ++$i) {
 $timingCsv = Join-Path $ResultsDir "timing_runs.csv"
 $summaryCsv = Join-Path $ResultsDir "timing_summary.csv"
 $wcetCsv = Join-Path $ResultsDir "wcet_observed.csv"
+$wcetSummaryCsv = Join-Path $ResultsDir "wcet_summary.csv"
 
 $timingRows | Export-Csv -NoTypeInformation -Path $timingCsv
 $wcetRows | Export-Csv -NoTypeInformation -Path $wcetCsv
+& python $WcetSummaryGenerator --input $wcetCsv --output $wcetSummaryCsv
+if ($LASTEXITCODE -ne 0) {
+  throw "No se pudo generar el resumen de tiempos de ejecucion observados"
+}
 
 $summaryRows = New-Object System.Collections.Generic.List[object]
 foreach ($kind in @("normal", "diagnostic_load")) {
@@ -265,3 +276,4 @@ Invoke-Build -EnvironmentName "esp32doit-devkit-v1"
 Write-Output "timing_runs_csv=$timingCsv"
 Write-Output "timing_summary_csv=$summaryCsv"
 Write-Output "wcet_observed_csv=$wcetCsv"
+Write-Output "wcet_summary_csv=$wcetSummaryCsv"

@@ -69,7 +69,7 @@ struct ActuatorCommand {
   bool buzzerOn;
   bool greenLedOn;
   bool redLedOn;
-  uint64_t commandTimestampUs;
+  uint64_t commandSentTimestampUs;
   uint64_t firstHighTimestampUs;
   uint64_t criticalConfirmedTimestampUs;
   uint64_t actuatorReceivedTimestampUs;

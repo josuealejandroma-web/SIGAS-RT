@@ -1,5 +1,10 @@
 # Resultados temporales SIGAS-RT
 
+Los valores de este documento proceden de las 25 corridas Wokwi historicas
+existentes. No fueron reemplazados durante la correccion local A04/A05/M05.
+El arbol actual requiere una nueva regresion temporal Wokwi para producir
+resultados finales vigentes.
+
 ## Resumen
 
 | Campo | Valor |
@@ -48,6 +53,20 @@ T_ACTUATOR_RECEIVED - T_CRITICAL_CONFIRMED = 22504 us
 
 No se denomina WCRT formal. El termino usado para el maximo medido es Worst Observed Response Time.
 
+## Observed Execution Time
+
+`simulation/results/wcet_summary.csv` se regenera exclusivamente desde
+`wcet_observed.csv` mediante `simulation/generate_wcet_summary.py`:
+
+| Tarea | Count | Min us | Average us | Max us |
+| --- | ---: | ---: | ---: | ---: |
+| `TaskActuator` | 25 | 1004 | 1005.64 | 1007 |
+| `TaskSafety` | 50 | 1837 | 2117.20 | 2435 |
+| `TaskSensors` | 50 | 2737 | 2976.60 | 3309 |
+
+Estos son tiempos de ejecucion observados en la campana historica, no cotas
+formales de WCET.
+
 ## CL-10
 
 `simulation/sensor_timeout_test.yaml` se ejecuto con la variante `esp32doit-devkit-v1-sensor-timeout-test`.
@@ -67,4 +86,4 @@ PASS.
 | `simulation/results/timing_runs.csv` | Corridas individuales con timestamps y tiempos derivados. |
 | `simulation/results/timing_summary.csv` | Estadisticas por grupo y metrica. |
 | `simulation/results/wcet_observed.csv` | Maximos observados reportados por tarea durante corridas. |
-| `simulation/results/wcet_summary.csv` | Resumen por tarea del peor tiempo de ejecucion observado. |
+| `simulation/results/wcet_summary.csv` | Resumen determinista `count/min/average/max` de tiempos de ejecucion observados; no es WCET formal. |

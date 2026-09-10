@@ -101,8 +101,10 @@ void taskActuator(void *parameters) {
       const uint64_t confirmationUs =
           command.criticalConfirmedTimestampUs - command.firstHighTimestampUs;
       const uint64_t commandLatencyUs =
-          command.commandTimestampUs - command.criticalConfirmedTimestampUs;
-      const uint64_t dispatchLatencyUs = receivedUs - command.commandTimestampUs;
+          command.commandSentTimestampUs -
+          command.criticalConfirmedTimestampUs;
+      const uint64_t dispatchLatencyUs =
+          receivedUs - command.commandSentTimestampUs;
       const uint64_t applyLatencyUs = appliedUs - receivedUs;
       const uint64_t postConfirmationReceivedUs =
           receivedUs - command.criticalConfirmedTimestampUs;
@@ -117,7 +119,8 @@ void taskActuator(void *parameters) {
                     static_cast<unsigned long long>(command.firstHighTimestampUs),
                     static_cast<unsigned long long>(
                         command.criticalConfirmedTimestampUs),
-                    static_cast<unsigned long long>(command.commandTimestampUs),
+                    static_cast<unsigned long long>(
+                        command.commandSentTimestampUs),
                     static_cast<unsigned long long>(receivedUs),
                     static_cast<unsigned long long>(appliedUs),
                     static_cast<unsigned long long>(confirmationUs),

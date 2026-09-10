@@ -1,4 +1,4 @@
 [wokwi]
 version = 1
-firmware = "firmware-merged.bin"
-elf = "../.pio/build/esp32doit-devkit-v1/firmware.elf"
+firmware = "../.pio/wokwi/current/firmware-merged.bin"
+elf = "../.pio/wokwi/current/firmware.elf"

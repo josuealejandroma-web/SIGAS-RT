@@ -12,6 +12,21 @@
 | RT-06 | TT-04 | Carga controlada en `TaskDiagnostics`; peor respuesta `post_confirmation_received_us` 22502 us. | PASS |
 | RT-07 | TT-01 a TT-06 | CSV separa confirmation, command, dispatch, post-confirmation y end-to-end. | PASS |
 
+Los resultados TT y RT-03 anteriores son evidencia historica. El arbol actual
+posterior a A04/A05/M05 necesita una nueva regresion Wokwi antes de considerar
+vigentes sus resultados temporales finales.
+
+## Regresiones locales de artefactos y medicion
+
+| Caso | Hallazgo | Evidencia | Resultado |
+| --- | --- | --- | --- |
+| A04-01 | A04 | Resolucion exige BIN, BIN combinado y ELF bajo `.pio/build/<environment>/`. | PASS local |
+| A04-02 | A04 | Alternancia normal -> visualizacion -> normal valida manifest, rutas y contenido preparado. | PASS local |
+| A05-01 | A05 | Un pico descartado reinicia solo el candidato de su zona y no define `T_FIRST_HIGH`. | PASS local |
+| A05-02 | A05 | Confirmacion doble selecciona explicitamente el candidato confirmado mas antiguo. | PASS local |
+| A05-03 | A05 | Decision y comando reciben el mismo `T_COMMAND_SENT` inmediatamente antes de publicar. | PASS local |
+| M05-01 | M05 | El summary se verifica y regenera deterministicamente desde `wcet_observed.csv`. | PASS local |
+
 ## Seguridad funcional simulada
 
 | Requisito | Prueba | Evidencia | Resultado |

@@ -58,6 +58,16 @@ Las colas tienen longitud 1 y usan `xQueueOverwrite()` para mantener el ultimo d
 
 Estas estructuras separan adquisicion, decision y actuacion.
 
+Los candidatos criticos se mantienen por zona. Si una zona deja `HIGH` antes
+de confirmar, su contador y su timestamp candidato se reinician. Cuando una o
+ambas zonas confirman, `T_FIRST_HIGH` toma el inicio del candidato confirmado;
+si ambas confirman simultaneamente se elige el mas antiguo.
+
+`T_COMMAND_SENT` se captura inmediatamente antes de publicar en
+`actuatorQueue`, se copia con el mismo valor en `SafetyDecision` y
+`ActuatorCommand`, y se registra despues de `xQueueOverwrite()`. Esta marca no
+representa movimiento fisico completado del servo.
+
 ## 7. Flujo de informacion
 
 ```text
@@ -72,6 +82,28 @@ sensorQueue -> TaskSafety -> actuatorQueue -> TaskActuator
     +--------------+-> queues de diagnostico -> TaskDiagnostics
 ```
 
+## 7.1 Seleccion de artefactos Wokwi
+
+Cada build genera `firmware.bin`, `firmware-merged.bin` y `firmware.elf`
+dentro de `.pio/build/<environment>/`. Antes de ejecutar Wokwi, el selector
+prepara juntos los tres archivos en `.pio/wokwi/current/` y escribe ahi un
+manifest local con el entorno y las rutas de origen. Todo ese staging esta
+ignorado por Git.
+
+Ejemplo:
+
+```powershell
+python visualization\bridge\firmware_artifacts.py `
+  --repo-root . `
+  --simulation-dir simulation `
+  --environment esp32doit-devkit-v1
+```
+
+La preparacion falla si falta BIN o ELF, si el manifest corresponde a otro
+entorno, si el contenido preparado esta obsoleto o si `wokwi.toml` no apunta
+al par seleccionado. `scenario_runner.py` transporta el entorno del catalogo
+hasta esta preparacion y valida el resultado antes de iniciar Wokwi.
+
 ## 8. Modo smoke test
 
 El hardware smoke test anterior se conserva, pero queda aislado del firmware
@@ -82,7 +114,8 @@ exclusivamente como rearme en runtime normal.
 Entorno dedicado:
 
 ```powershell
-.\.venv\Scripts\platformio run -e esp32doit-devkit-v1-hardware-smoke
+.\.venv\Scripts\platformio.exe run -e esp32doit-devkit-v1-hardware-smoke
+python visualization\bridge\firmware_artifacts.py --repo-root . --simulation-dir simulation --environment esp32doit-devkit-v1-hardware-smoke
 ```
 
 Comando:
@@ -100,6 +133,8 @@ estado fisico de `resetBtn` al encender.
 Comando:
 
 ```powershell
+.\.venv\Scripts\platformio.exe run -e esp32doit-devkit-v1
+python visualization\bridge\firmware_artifacts.py --repo-root . --simulation-dir simulation --environment esp32doit-devkit-v1
 cd simulation
 ..\tools\wokwi-cli.exe --timeout 45000 --scenario freertos_integration_test.yaml --serial-log-file wokwi-serial-freertos.log .
 ```

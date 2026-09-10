@@ -10,7 +10,10 @@ Sensor -> ADC -> TaskSensors -> sensorQueue -> TaskSafety -> actuatorQueue -> Ta
 
 cumple el deadline experimental definido para el prototipo academico SIGAS-RT.
 
-Los resultados temporales corresponden a una simulacion ejecutada en Wokwi y permiten verificar el comportamiento temporal del prototipo academico. No constituyen certificacion de un sistema Hard Real-Time sobre hardware fisico.
+Los resultados temporales corresponden a una simulacion ejecutada previamente
+en Wokwi y permiten verificar el comportamiento temporal de aquella revision
+del prototipo academico. No constituyen certificacion de un sistema Hard
+Real-Time sobre hardware fisico ni evidencia temporal final del arbol actual.
 
 ## Deadline
 
@@ -26,9 +29,9 @@ Antes de este bloque, `RT-03` estaba escrito hasta `T_command`. La formulacion u
 
 | Timestamp | Definicion |
 | --- | --- |
-| `T_FIRST_HIGH` | Primera muestra ADC clasificada como `HIGH`. |
+| `T_FIRST_HIGH` | Primera muestra del candidato `HIGH` consecutivo de la zona que finalmente confirma la condicion critica. Un pico descartado no se conserva. |
 | `T_CRITICAL_CONFIRMED` | Confirmacion de 3 muestras `HIGH` consecutivas. |
-| `T_COMMAND_SENT` | Publicacion del comando en `actuatorQueue`. |
+| `T_COMMAND_SENT` | Timestamp capturado inmediatamente antes de `xQueueOverwrite(actuatorQueue, command)` e insertado en `SafetyDecision` y `ActuatorCommand`; el log se emite despues de publicar. |
 | `T_ACTUATOR_RECEIVED` | Recepcion del comando por `TaskActuator`. |
 | `T_ACTUATOR_APPLIED` | Salidas GPIO/PWM aplicadas por `TaskActuator`. |
 
@@ -52,13 +55,22 @@ Se agrego instrumentacion con `esp_timer_get_time()` y logs compactos `[TIMING]`
 - `simulation/results/timing_runs.csv`
 - `simulation/results/timing_summary.csv`
 - `simulation/results/wcet_observed.csv`
+- `simulation/results/wcet_summary.csv`
 
-Se ejecutaron 25 corridas temporales:
+`simulation/generate_wcet_summary.py` regenera de forma determinista el
+resumen de tiempos de ejecucion observados desde `wcet_observed.csv`. El
+archivo historico conserva su nombre, pero no representa un WCET formal.
+
+La campaña historica contiene 25 corridas temporales:
 
 - 20 corridas normales para TT-01, TT-02, TT-03 y TT-05.
 - 5 corridas con carga artificial controlada en `TaskDiagnostics` para TT-04.
 
-## Resultados temporales
+El arbol actual, que incorpora A04, A05 y M05 sobre `f155e190`, requiere una
+nueva regresion Wokwi antes de declarar resultados temporales finales. Esa
+regresion no forma parte de este bloque.
+
+## Resultados temporales historicos
 
 | Grupo | Metrica | Min us | Promedio us | Mediana us | Max us | P95 us | P99 us |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -121,11 +133,20 @@ La prueba TT-04 compilo una variante con `SIGAS_RT_DIAGNOSTICS_LOAD`, que ejecut
 
 ## Utilizacion observada
 
-Maximos observados de ejecucion:
+Tiempos de ejecucion observados regenerados desde
+`simulation/results/wcet_observed.csv`:
+
+| Tarea | Muestras | Min us | Promedio us | Max us |
+| --- | ---: | ---: | ---: | ---: |
+| `TaskActuator` | 25 | 1004 | 1005.64 | 1007 |
+| `TaskSafety` | 50 | 1837 | 2117.20 | 2435 |
+| `TaskSensors` | 50 | 2737 | 2976.60 | 3309 |
+
+Maximos observados usados para la estimacion informativa:
 
 | Tarea | C observado max us | Periodo considerado | Utilizacion |
 | --- | ---: | ---: | ---: |
-| `TaskSensors` | 3310 | 100000 us | 0.03310 |
+| `TaskSensors` | 3309 | 100000 us | 0.03309 |
 | `TaskDiagnostics` | No instrumentada como WCET critico | 500000 us | No calculada |
 
 Para las tareas event-driven no se aplica una utilizacion periodica directa sin asumir una tasa maxima de eventos. Como cota informativa, si se toma una activacion por muestra de sensor:
@@ -138,7 +159,7 @@ Para las tareas event-driven no se aplica una utilizacion periodica directa sin 
 Con esa hipotesis, la suma informativa para la ruta critica seria:
 
 ```text
-U_total ~= (3310 + 2435 + 1007) / 100000 = 0.06752
+U_total ~= (3309 + 2435 + 1007) / 100000 = 0.06751
 ```
 
 Este valor no es una prueba formal de planificabilidad RMS. Las prioridades no fueron asignadas estrictamente por periodo; fueron asignadas por criticidad funcional. Un analisis RMS solo seria valido bajo supuestos adicionales de tareas periodicas independientes, deadlines relativos iguales a periodos y prioridades monotonicamente asignadas por periodo.
@@ -163,7 +184,11 @@ El servomotor simulado no representa tiempos reales de una electrovalvula certif
 
 - Los resultados dependen de Wokwi CLI y del host que ejecuta la simulacion.
 - La instrumentacion usa Serial para evidencia; se mantuvo compacta, pero sigue siendo observabilidad de prototipo.
-- `T_FIRST_HIGH` mide primera muestra alta observada, no instante fisico exacto del evento.
+- `T_FIRST_HIGH` mide el inicio del candidato alto que confirma; cada zona
+  mantiene su propio candidato y lo descarta si deja `HIGH`. Si ambas zonas
+  confirman en la misma evaluacion se usa el candidato confirmado mas antiguo.
+- Los valores de las 25 corridas son historicos y deben renovarse para validar
+  temporalmente el arbol posterior a A04/A05/M05.
 - El timeout CL-10 se automatizo con build flag de prueba, sin alterar el firmware normal.
 - No hay certificacion industrial ni validacion sobre hardware fisico.
 

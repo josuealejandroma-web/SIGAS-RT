@@ -10,6 +10,14 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
+from firmware_artifacts import (
+    FirmwareArtifactError,
+    PreparedArtifacts,
+    prepare_wokwi_artifacts,
+    validate_prepared_artifacts,
+    validate_wokwi_configuration,
+)
+
 
 class ScenarioError(ValueError):
     """Raised when a scenario command is not allowed."""
@@ -78,7 +86,12 @@ class WokwiScenarioRunner:
             raise ScenarioError("WOKWI_CLI_TOKEN is not configured")
         if not self.wokwi_cli.is_file():
             raise ScenarioError(f"wokwi-cli not found: {self.wokwi_cli}")
-        self._build_environment(scenario.env)
+        prepared = self._build_environment(scenario.env)
+        try:
+            prepared = validate_prepared_artifacts(self.repo_root, scenario.env)
+            validate_wokwi_configuration(self.simulation_dir, prepared)
+        except FirmwareArtifactError as exc:
+            raise ScenarioError(str(exc)) from exc
         serial_log = self.simulation_dir / f"wokwi-serial-bridge-{int(time.time() * 1000)}.log"
         if serial_log.exists():
             serial_log.unlink()
@@ -104,7 +117,7 @@ class WokwiScenarioRunner:
         )
         return RunningScenario(process=process, serial_log=serial_log)
 
-    def _build_environment(self, env_name: str) -> None:
+    def _build_environment(self, env_name: str) -> PreparedArtifacts:
         platformio = self._platformio_command()
         result = subprocess.run(
             [str(platformio), "run", "-e", env_name],
@@ -117,11 +130,10 @@ class WokwiScenarioRunner:
         )
         if result.returncode != 0:
             raise ScenarioError(f"PlatformIO build failed for {env_name}\n{result.stdout}")
-        source_elf = self.repo_root / ".pio" / "build" / env_name / "firmware.elf"
-        target_elf = self.repo_root / ".pio" / "build" / "esp32doit-devkit-v1" / "firmware.elf"
-        target_elf.parent.mkdir(parents=True, exist_ok=True)
-        if source_elf.is_file():
-            shutil.copyfile(source_elf, target_elf)
+        try:
+            return prepare_wokwi_artifacts(self.repo_root, env_name)
+        except FirmwareArtifactError as exc:
+            raise ScenarioError(str(exc)) from exc
 
     def _platformio_command(self) -> Path:
         if self.platformio and self.platformio.exists():
