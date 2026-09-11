@@ -21,8 +21,8 @@ TOUR_MARKERS = (
     ("Balcon", 469),
     ("Vista general", 505),
 )
-TOUR_MOVE_FRAMES = 24
-TOUR_HOLD_FRAMES = 10
+CAMERA_WALL_CLEARANCE = 0.001
+TRANSITION_FRAMES = (143, 144, 145)
 
 REQUIRED_OBJECTS = [
     "SIGAS_ModelRoot",
@@ -93,13 +93,12 @@ REQUIRED_OBJECTS = [
 ]
 
 
-def point_is_inside_bounds(point, obj):
+def point_intersects_bounds(point, obj, clearance=0.0):
     corners = [obj.matrix_world @ Vector(corner) for corner in obj.bound_box]
     minimum = Vector(tuple(min(corner[axis] for corner in corners) for axis in range(3)))
     maximum = Vector(tuple(max(corner[axis] for corner in corners) for axis in range(3)))
-    tolerance = 0.001
     return all(
-        minimum[axis] - tolerance <= point[axis] <= maximum[axis] + tolerance
+        minimum[axis] - clearance <= point[axis] <= maximum[axis] + clearance
         for axis in range(3)
     )
 
@@ -110,23 +109,25 @@ def validate_camera_clear_of_walls(scene, camera):
         for obj in scene.objects
         if obj.type == "MESH" and "Wall" in obj.name
     ]
-    for label, start_frame in TOUR_MARKERS:
-        shot_end = min(
-            start_frame + TOUR_MOVE_FRAMES + TOUR_HOLD_FRAMES,
-            scene.frame_end,
-        )
-        for frame in range(start_frame, shot_end + 1):
-            scene.frame_set(frame)
-            position = camera.matrix_world.translation
-            blocking_walls = [
-                wall.name for wall in walls if point_is_inside_bounds(position, wall)
-            ]
-            if blocking_walls:
-                print(
-                    "SIGAS_BLENDER_VALIDATE: FAIL camera inside wall "
-                    f"shot={label} frame={frame} walls={','.join(blocking_walls)}"
-                )
-                return False
+    for frame in range(scene.frame_start, scene.frame_end + 1):
+        scene.frame_set(frame)
+        position = camera.matrix_world.translation
+        blocking_walls = [
+            wall.name
+            for wall in walls
+            if point_intersects_bounds(position, wall, CAMERA_WALL_CLEARANCE)
+        ]
+        if blocking_walls:
+            print(
+                "SIGAS_BLENDER_VALIDATE: FAIL camera intersects wall clearance "
+                f"frame={frame} walls={','.join(blocking_walls)}"
+            )
+            return False
+        if frame in TRANSITION_FRAMES:
+            print(
+                "SIGAS_BLENDER_TRANSITION: PASS "
+                f"frame={frame} position=({position.x:.3f},{position.y:.3f},{position.z:.3f})"
+            )
     scene.frame_set(scene.frame_start)
     return True
 

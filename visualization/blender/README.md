@@ -27,7 +27,7 @@ La camara y las luces del recorrido son recursos de presentacion del `.blend`. S
 ## Regenerar
 
 ```powershell
-& "C:\Program Files\Blender Foundation\Blender 5.1\blender.exe" --background --factory-startup --python visualization\blender\scripts\create_scene.py
+blender --background --factory-startup --python visualization\blender\scripts\create_scene.py
 tools\godot\godot.cmd --headless --path visualization\godot --import
 ```
 
@@ -58,6 +58,8 @@ El modelo mantiene una lectura tecnica antes que fotorealista, pero agrega detal
 - gabinete de control con puerta translucida, modulo ESP32, antena, borneras y rejilla de buzzer;
 - camara general e iluminacion interior ajustadas para inspeccion visual.
 - camara interior animada y movible con marcadores para todas las zonas de la casa.
+
+`validate_scene.py` inspecciona cada frame del 1 al 529 contra los limites de los muros. La transicion Panel de control -> Cocina incluye puntos intermedios para mantener libres los frames 143, 144 y 145.
 
 ## Distribucion
 

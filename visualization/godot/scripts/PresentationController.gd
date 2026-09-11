@@ -8,7 +8,7 @@ const QUICK_POSES := {
 	3: {"name": "COCINA / ZONA 1", "position": Vector3(-2.35, 0.18, -1.20), "yaw": 0.75},
 	4: {"name": "AREA TECNICA / ZONA 2", "position": Vector3(2.65, 0.18, -1.35), "yaw": -0.25},
 	5: {"name": "MEDIDOR Y VALVULAS", "position": Vector3(-5.85, 0.16, -1.80), "yaw": 0.0},
-	6: {"name": "PANEL SIGAS / ESP32", "position": Vector3(0.25, 0.18, 1.90), "yaw": PI},
+	6: {"name": "PANEL SIGAS / ESP32", "position": Vector3(1.15, 0.18, 2.35), "yaw": PI},
 	7: {"name": "PLANTA ALTA", "position": Vector3(1.25, 3.32, 1.80), "yaw": -PI / 2.0, "pitch": -0.58},
 	8: {"name": "DORMITORIO PRINCIPAL", "position": Vector3(-3.25, 3.32, -0.65), "yaw": 0.0, "pitch": -0.68},
 	9: {"name": "BALCON / VISTA GENERAL", "position": Vector3(0.0, 3.75, 4.18), "yaw": -PI / 2.0, "pitch": -0.38}

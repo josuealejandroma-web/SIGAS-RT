@@ -80,7 +80,7 @@ Con los valores observados en Wokwi, 410 clasifica como `NORMAL`, 2048 como `WAR
 
 ## Confirmacion y enclavamiento
 
-La condicion critica requiere `CRITICAL_CONFIRMATION_SAMPLES = 3` muestras altas con `sequence` consecutivo en cualquiera de las dos zonas. La suma usa semantica `uint32_t`, por lo que `0xFFFFFFFF -> 0` es continua. Si `xQueueOverwrite()` hace visible un salto, ambos candidatos se reinician antes de tratar la muestra nueva. Con periodo de sensores de 100 ms, la confirmacion ocurre aproximadamente 300 ms despues del inicio de una fuga sostenida simulada.
+La condicion critica requiere `CRITICAL_CONFIRMATION_SAMPLES = 3` muestras altas con `sequence` consecutivo en cualquiera de las dos zonas. La suma usa semantica `uint32_t`, por lo que `0xFFFFFFFF -> 0` es continua. Si `xQueueOverwrite()` hace visible un salto, ambos candidatos se reinician antes de tratar la muestra nueva. Con periodo de sensores de 100 ms, la confirmacion ocurre aproximadamente 200 ms despues de la primera muestra `HIGH` observada. Un cruce fisico arbitrario entre fases de muestreo produce una ventana conceptual de 200 a 300 ms, mas interferencias, sin afirmar una garantia fisica.
 
 Un pico aislado no cierra la valvula: el contador vuelve a cero si la zona deja de estar alta antes de llegar a 3 muestras. Al confirmar, `TaskSafety` registra `T_FIRST_HIGH`, `T_CRITICAL_CONFIRMED` y `T_COMMAND_SENT`, envia `SAFE_CLOSE` y pasa a `SYSTEM_SAFE_LATCHED`.
 
@@ -116,7 +116,7 @@ Variables logicas:
 
 No se debe mezclar la orden al actuador con el movimiento fisico completo del actuador. En simulacion, el servo representa una valvula academica, no una valvula certificada.
 
-El analisis temporal final del prototipo simulado esta documentado en `docs/analisis_temporal.md`. El maximo observado para `T_ACTUATOR_RECEIVED - T_CRITICAL_CONFIRMED` fue 22504 us frente a un deadline de 500000 us.
+El analisis temporal esta documentado en `docs/analisis_temporal.md`. La campana historica observo un maximo de 22504 us para `T_ACTUATOR_RECEIVED - T_CRITICAL_CONFIRMED` frente a un deadline de 500000 us. El arbol actual requiere una nueva regresion Wokwi antes de declarar resultados temporales finales vigentes.
 
 ## Reglas de implementacion
 

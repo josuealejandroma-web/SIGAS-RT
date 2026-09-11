@@ -202,4 +202,4 @@ Se proponen canales ADC1 para evitar conflictos conocidos de ADC2 con subsistema
 | Periodo diagnostico | 500 ms | No critico, evita saturar Serial. |
 | Deadline prototipo | 500 ms | Desde `T_detect` hasta `T_command`. |
 
-Con 3 muestras consecutivas a 100 ms, la confirmacion toma aproximadamente 300 ms desde el inicio de una fuga sostenida simulada. Esa latencia es anterior a `T_detect`. El requisito RT-03 mide desde confirmacion (`T_detect`) hasta orden al actuador (`T_command`), que debe mantenerse por debajo de 500 ms.
+Con 3 muestras consecutivas a 100 ms, la tercera muestra y la confirmacion llegan aproximadamente 200 ms despues de la primera muestra `HIGH` observada. Desde un cruce fisico arbitrario entre fases de muestreo, la ventana conceptual es de aproximadamente 200 a 300 ms, mas interferencias. No constituye una garantia fisica. Esa latencia es anterior a `T_detect`; `RT-03` mide desde la confirmacion (`T_detect`) hasta la recepcion por el actuador.

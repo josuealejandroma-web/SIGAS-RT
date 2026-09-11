@@ -50,7 +50,7 @@ Las posiciones son coordenadas de los pies en Godot. Se eligieron junto a `Camer
 | `3` | Cocina / Zona 1 | `(-2.35, 0.18, -1.20)` |
 | `4` | Area tecnica / Zona 2 | `(2.65, 0.18, -1.35)` |
 | `5` | Medidor y valvulas | `(-5.85, 0.16, -1.80)` |
-| `6` | Panel SIGAS / ESP32 | `(0.25, 0.18, 1.90)` |
+| `6` | Panel SIGAS / ESP32 | `(1.15, 0.18, 2.35)` |
 | `7` | Planta alta | `(1.25, 3.32, 1.80)` |
 | `8` | Dormitorio principal | `(-3.25, 3.32, -0.65)` |
 | `9` | Balcon / vista general | `(0.00, 3.75, 4.18)` |
@@ -67,7 +67,7 @@ Las posiciones son coordenadas de los pies en Godot. Se eligieron junto a `Camer
 
 El modelo Blender actual representa la puerta y varios tabiques como prismas continuos, y la escalera visual termina antes de la losa. Las transiciones se activan antes de esos cierres y colocan al personaje en un punto despejado al otro lado. La camara no se desplaza a traves del muro y existe un periodo de bloqueo para evitar rebotes.
 
-La geometria Blender, sus markers y el tour interior no se modifican.
+La geometria Blender y sus markers no se modifican. El recorrido interior se valida en sus 529 frames; la transicion Panel de control -> Cocina usa un desvio de camara para no atravesar `SIGAS_InteriorWall_Kitchen`.
 
 ## HUD y componentes
 
@@ -109,4 +109,4 @@ tools\godot\godot.cmd --headless --path visualization\godot --script res://scrip
 powershell -ExecutionPolicy Bypass -File scripts\verify_all.ps1 -SkipWokwi
 ```
 
-`FreeWalkSelfTest.gd` cubre `FREE-01` a `FREE-17`; `TelemetrySelfTest.gd` cubre expiracion, recuperacion, rechazo de payloads y distincion de fuentes. Las capturas de validacion grafica se generan localmente dentro de `.godot/` y no se versionan.
+`FreeWalkSelfTest.gd` cubre `FREE-01` a `FREE-17` y los casos geometricos `M07-QUICK-*`: posicion libre, apoyo de piso y salida minima para los accesos 1 a 9. `TelemetrySelfTest.gd` cubre expiracion, recuperacion, rechazo de payloads y distincion de fuentes. Las capturas de validacion grafica se generan localmente dentro de `.godot/` y no se versionan.

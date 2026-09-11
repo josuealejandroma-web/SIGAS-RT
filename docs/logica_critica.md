@@ -45,7 +45,7 @@ La histeresis evita oscilar entre `NORMAL` y `WARNING` cuando la lectura baja de
 
 ## Confirmacion
 
-La condicion critica se confirma con `CRITICAL_CONFIRMATION_SAMPLES = 3` muestras consecutivas `HIGH` en cualquiera de las dos zonas. Consecutivas significa que `currentSequence == previousSequence + 1` con aritmetica `uint32_t`, incluido el rollover a cero. Un salto reinicia los dos candidatos antes de considerar la muestra actual; se registra el salto, pero no se genera `FAULT` solo por esa discontinuidad. Con `SENSOR_PERIOD = 100 ms`, la latencia de confirmacion esperada es aproximadamente 300 ms desde el inicio de la condicion alta sostenida.
+La condicion critica se confirma con `CRITICAL_CONFIRMATION_SAMPLES = 3` muestras consecutivas `HIGH` en cualquiera de las dos zonas. Consecutivas significa que `currentSequence == previousSequence + 1` con aritmetica `uint32_t`, incluido el rollover a cero. Un salto reinicia los dos candidatos antes de considerar la muestra actual; se registra el salto, pero no se genera `FAULT` solo por esa discontinuidad. Con `SENSOR_PERIOD = 100 ms`, la tercera muestra y la confirmacion llegan aproximadamente 200 ms despues de la primera muestra `HIGH` observada. Desde un cruce fisico arbitrario entre muestras, la ventana conceptual es de aproximadamente 200 a 300 ms, mas interferencias; no es una garantia fisica.
 
 Un pico aislado genera candidato `HIGH`, pero no emite `SAFE_CLOSE` si no llega a 3 muestras.
 

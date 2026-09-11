@@ -1,7 +1,7 @@
 # Resultados temporales SIGAS-RT
 
 Los valores de este documento proceden de las 25 corridas Wokwi historicas
-existentes. No fueron reemplazados durante la correccion local A04/A05/M05.
+existentes. No fueron reemplazados durante las correcciones locales posteriores.
 El arbol actual requiere una nueva regresion temporal Wokwi para producir
 resultados finales vigentes.
 
@@ -13,8 +13,8 @@ resultados finales vigentes.
 | Corridas normales | 20 |
 | Corridas con carga diagnostica | 5 |
 | Deadline RT-03 | 500000 us |
-| PASS | 25 |
-| FAIL | 0 |
+| Corridas PASS historicas | 25 |
+| Corridas FAIL historicas | 0 |
 | Worst Observed Response Time | 22504 us |
 | Margen temporal | 477496 us |
 | Margen porcentual | 95.50 % |
@@ -36,12 +36,12 @@ resultados finales vigentes.
 
 | Caso | Escenario | Corridas | Resultado |
 | --- | --- | ---: | --- |
-| TT-01 | `simulation/timing_test.yaml` | 5 | PASS |
-| TT-02 | `simulation/timing_zone2_test.yaml` | 5 | PASS |
-| TT-03 | `simulation/timing_both_test.yaml` | 5 | PASS |
-| TT-04 | `simulation/timing_load_test.yaml` | 5 | PASS |
-| TT-05 | `simulation/timing_phase_test.yaml` | 5 | PASS |
-| TT-06 | `simulation/run_timing_measurements.ps1` | 25 | PASS |
+| TT-01 | `simulation/timing_test.yaml` | 5 | PASS HISTORICO WOKWI |
+| TT-02 | `simulation/timing_zone2_test.yaml` | 5 | PASS HISTORICO WOKWI |
+| TT-03 | `simulation/timing_both_test.yaml` | 5 | PASS HISTORICO WOKWI |
+| TT-04 | `simulation/timing_load_test.yaml` | 5 | PASS HISTORICO WOKWI |
+| TT-05 | `simulation/timing_phase_test.yaml` | 5 | PASS HISTORICO WOKWI |
+| TT-06 | `simulation/run_timing_measurements.ps1` | 25 | PASS HISTORICO WOKWI |
 
 ## WORT
 
@@ -77,7 +77,7 @@ Resultado:
 SYSTEM_STARTUP -> SYSTEM_FAULT -> SAFE_CLOSE
 ```
 
-PASS.
+PASS HISTORICO WOKWI.
 
 ## Archivos de evidencia
 

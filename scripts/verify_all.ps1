@@ -183,15 +183,12 @@ Invoke-Step "Git whitespace check" {
   git diff --check
 }
 
+Invoke-Step "Secret scan self-test" {
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts\test_secret_scan.ps1
+}
+
 Invoke-Step "Secret scan" {
-  $secretPattern = "wok_[A-Za-z0-9]|WOKWI_CLI_TOKE[N]\s*[=]|TOKE[N]=|SECRE[T]=|PASSWOR[D]="
-  rg -n $secretPattern . -g "!.pio/**" -g "!tools/**" -g "!.venv/**" -g "!simulation/*.log"
-  if ($LASTEXITCODE -eq 0) {
-    throw "Secret scan found matches."
-  }
-  if ($LASTEXITCODE -eq 1) {
-    $global:LASTEXITCODE = 0
-  }
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts\secret_scan.ps1
 }
 
 Write-Host "CORE EMBEDDED: PASS"

@@ -66,9 +66,9 @@ La campaña historica contiene 25 corridas temporales:
 - 20 corridas normales para TT-01, TT-02, TT-03 y TT-05.
 - 5 corridas con carga artificial controlada en `TaskDiagnostics` para TT-04.
 
-El arbol actual, que incorpora A04, A05 y M05 sobre `f155e190`, requiere una
-nueva regresion Wokwi antes de declarar resultados temporales finales. Esa
-regresion no forma parte de este bloque.
+El arbol actual incorpora correcciones locales posteriores a esa campana y
+requiere una nueva regresion Wokwi antes de declarar resultados temporales
+finales. Esa regresion no forma parte de este bloque.
 
 ## Resultados temporales historicos
 

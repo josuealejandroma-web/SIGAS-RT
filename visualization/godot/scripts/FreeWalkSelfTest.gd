@@ -2,6 +2,21 @@ extends SceneTree
 
 var _failed := false
 
+const QUICK_EXIT_DIRECTIONS := [
+	Vector2(0.0, -1.0),
+	Vector2(1.0, 0.0),
+	Vector2(0.0, 1.0),
+	Vector2(-1.0, 0.0)
+]
+const FLOOR_COLLIDERS := [
+	"Collider_SIGAS_Garden",
+	"Collider_SIGAS_Ground_Slab",
+	"Collider_SIGAS_Upper_Slab",
+	"Collider_SIGAS_Balcony",
+	"Collider_SIGAS_Terrace_Surface",
+	"Collider_SIGAS_StairRamp"
+]
+
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -113,11 +128,26 @@ func _run() -> void:
 	)
 
 	var quick_zones_ok := true
+	var quick_geometry_ok := true
 	for index in range(1, 10):
 		var pose: Dictionary = presentation.get_quick_pose(index)
-		quick_zones_ok = quick_zones_ok and presentation.trigger_quick_zone(index)
-		quick_zones_ok = quick_zones_ok and free_walk.global_position.distance_to(pose["position"]) < 0.02
+		var triggered: bool = presentation.trigger_quick_zone(index)
+		var reached_pose: bool = triggered and free_walk.global_position.distance_to(pose["position"]) < 0.02
+		quick_zones_ok = quick_zones_ok and reached_pose
+		var blocking_overlaps := _blocking_overlap_names(free_walk)
+		var clear: bool = blocking_overlaps.is_empty()
+		_check(
+			"M07-QUICK-%d-CLEAR" % index,
+			clear,
+			"La capsula intersecta: " + ", ".join(blocking_overlaps)
+		)
+		var floor_ok := _has_floor_support(free_walk, float(pose["position"].y))
+		_check("M07-QUICK-%d-FLOOR" % index, floor_ok, "El acceso no apoya en el piso esperado")
+		var can_exit: bool = await _can_exit_quick_pose(presentation, free_walk, index, pose)
+		_check("M07-QUICK-%d-EXIT" % index, can_exit, "El jugador no puede salir de la posicion")
+		quick_geometry_ok = quick_geometry_ok and clear and floor_ok and can_exit
 	_check("FREE-09", quick_zones_ok, "Uno o mas accesos 1-9 no llevaron a su posicion segura")
+	_check("M07-QUICK-ALL", quick_geometry_ok, "Uno o mas accesos rapidos no son geometricamente seguros")
 
 	presentation.switch_mode(2, false)
 	var general_technical: bool = twin.is_technical_view() and scene.get_node("CameraRig/Camera3D").current
@@ -219,6 +249,69 @@ func _run() -> void:
 func _wait_physics(frame_count: int) -> void:
 	for _index in range(frame_count):
 		await physics_frame
+
+
+func _blocking_overlap_names(free_walk: CharacterBody3D) -> PackedStringArray:
+	var collision_shape: CollisionShape3D = free_walk.get_node("CollisionShape3D")
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = collision_shape.shape
+	query.transform = collision_shape.global_transform
+	query.collision_mask = 1
+	query.collide_with_bodies = true
+	query.collide_with_areas = false
+	query.exclude = [free_walk.get_rid()]
+	var blocking := PackedStringArray()
+	for result in free_walk.get_world_3d().direct_space_state.intersect_shape(query, 128):
+		var shape_name := _result_shape_name(result)
+		if not shape_name.is_empty() and shape_name not in FLOOR_COLLIDERS and shape_name not in blocking:
+			blocking.append(shape_name)
+	return blocking
+
+
+func _has_floor_support(free_walk: CharacterBody3D, expected_y: float) -> bool:
+	if abs(free_walk.global_position.y - expected_y) > 0.03:
+		return false
+	var query := PhysicsRayQueryParameters3D.create(
+		free_walk.global_position + Vector3.UP * 0.12,
+		free_walk.global_position + Vector3.DOWN * 0.35,
+		1,
+		[free_walk.get_rid()]
+	)
+	query.collide_with_areas = false
+	var result := free_walk.get_world_3d().direct_space_state.intersect_ray(query)
+	return not result.is_empty() and _result_shape_name(result) in FLOOR_COLLIDERS
+
+
+func _can_exit_quick_pose(
+	presentation: CanvasLayer,
+	free_walk: CharacterBody3D,
+	index: int,
+	pose: Dictionary
+) -> bool:
+	for direction in QUICK_EXIT_DIRECTIONS:
+		presentation.trigger_quick_zone(index)
+		await _wait_physics(2)
+		var start := free_walk.global_position
+		free_walk.set_debug_input(direction, false, true)
+		await _wait_physics(10)
+		free_walk.clear_debug_input()
+		var horizontal_delta := free_walk.global_position - start
+		horizontal_delta.y = 0.0
+		if horizontal_delta.length() > 0.05 and abs(free_walk.global_position.y - float(pose["position"].y)) < 0.40:
+			return true
+	return false
+
+
+func _result_shape_name(result: Dictionary) -> String:
+	var collider: Variant = result.get("collider")
+	var shape_index := int(result.get("shape", -1))
+	if not collider is CollisionObject3D or shape_index < 0:
+		return ""
+	var owner_id: int = collider.shape_find_owner(shape_index)
+	if owner_id < 0:
+		return ""
+	var owner: Object = collider.shape_owner_get_owner(owner_id)
+	return str(owner.name) if owner is Node else ""
 
 
 func _check(test_name: String, condition: bool, failure_message: String) -> void:

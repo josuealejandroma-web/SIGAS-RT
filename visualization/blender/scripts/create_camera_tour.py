@@ -22,6 +22,11 @@ TOUR_STOPS = (
 MOVE_FRAMES = 24
 HOLD_FRAMES = 10
 END_PADDING_FRAMES = 24
+PANEL_TRANSITION_HOLD_FRAME = 137
+PANEL_TO_KITCHEN_WAYPOINTS = (
+    (140, (-1.35, -2.82, 1.65)),
+    (142, (-1.85, -2.82, 1.65)),
+)
 
 
 def _make_collection(name):
@@ -41,23 +46,56 @@ def _add_point_light(collection, name, location, energy):
     return light
 
 
-def _set_linear_interpolation(obj):
+def _animation_fcurves(obj):
     if obj.animation_data is None or obj.animation_data.action is None:
-        return
+        return []
     action = obj.animation_data.action
     if hasattr(action, "fcurves"):
-        fcurves = action.fcurves
-    else:
-        fcurves = [
-            fcurve
-            for layer in action.layers
-            for strip in layer.strips
-            for channelbag in strip.channelbags
-            for fcurve in channelbag.fcurves
-        ]
-    for fcurve in fcurves:
+        return action.fcurves
+    return [
+        fcurve
+        for layer in action.layers
+        for strip in layer.strips
+        for channelbag in strip.channelbags
+        for fcurve in channelbag.fcurves
+    ]
+
+
+def _set_linear_interpolation(obj):
+    for fcurve in _animation_fcurves(obj):
         for keyframe in fcurve.keyframe_points:
             keyframe.interpolation = "LINEAR"
+
+
+def _remove_location_keyframe(obj, frame):
+    for fcurve in _animation_fcurves(obj):
+        if fcurve.data_path != "location":
+            continue
+        for keyframe in list(fcurve.keyframe_points):
+            if abs(keyframe.co.x - frame) < 0.001:
+                fcurve.keyframe_points.remove(keyframe)
+        fcurve.update()
+
+
+def _camera_end(camera_position, target_position):
+    return tuple(
+        camera_axis + (target_axis - camera_axis) * 0.12
+        for camera_axis, target_axis in zip(camera_position, target_position)
+    )
+
+
+def apply_panel_to_kitchen_transition(camera):
+    panel_stop = next(stop for stop in TOUR_STOPS if stop[0] == "Panel de control")
+    panel_end = _camera_end(panel_stop[2], panel_stop[3])
+    original_hold_frame = panel_stop[1] + MOVE_FRAMES + HOLD_FRAMES
+    _remove_location_keyframe(camera, original_hold_frame)
+    for frame, position in (
+        (PANEL_TRANSITION_HOLD_FRAME, panel_end),
+        *PANEL_TO_KITCHEN_WAYPOINTS,
+    ):
+        camera.location = position
+        camera.keyframe_insert(data_path="location", frame=frame)
+    _set_linear_interpolation(camera)
 
 
 def _add_interior_lights(collection):
@@ -106,10 +144,7 @@ def create_interior_tour():
 
     for label, frame, camera_position, target_position in TOUR_STOPS:
         scene.timeline_markers.new(label, frame=frame)
-        camera_end = tuple(
-            camera_axis + (target_axis - camera_axis) * 0.12
-            for camera_axis, target_axis in zip(camera_position, target_position)
-        )
+        camera_end = _camera_end(camera_position, target_position)
         for keyframe_frame, keyed_camera_position in (
             (frame, camera_position),
             (frame + MOVE_FRAMES, camera_end),
@@ -120,6 +155,7 @@ def create_interior_tour():
             camera.keyframe_insert(data_path="location", frame=keyframe_frame)
             target.keyframe_insert(data_path="location", frame=keyframe_frame)
 
+    apply_panel_to_kitchen_transition(camera)
     _set_linear_interpolation(camera)
     _set_linear_interpolation(target)
     _add_interior_lights(collection)

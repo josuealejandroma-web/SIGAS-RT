@@ -1,105 +1,153 @@
 # SIGAS-RT
 
 Sistema Inteligente de Deteccion y Corte Automatico de Gas en Tiempo Real.
-
-Proyecto académico de Sistemas de Tiempo Real Crítico.
-
-## Arquitectura principal
+Es un prototipo academico sobre ESP32, FreeRTOS, PlatformIO y Wokwi, con un
+gemelo digital local auxiliar en Godot y un modelo maestro en Blender.
 
 ```text
 Sensor -> ADC -> CPU -> Procesamiento en Tiempo Real -> Actuador
 ```
 
-## Tecnologias
+La deteccion, el enclavamiento fail-safe y la politica de actuadores se ejecutan
+localmente en el firmware. Godot representa telemetria y nunca sustituye la
+logica critica ni envia ordenes directas a actuadores.
 
-- ESP32
-- C/C++
-- FreeRTOS
-- PlatformIO
-- Wokwi
-- Wokwi CLI/MCP
-- Godot 4 para gemelo digital local auxiliar
-- Python 3 para bridge local de telemetria
+## Estado de la evidencia
 
-## Estado del proyecto
+El criterio `RT-03` mide desde `T_CRITICAL_CONFIRMED` hasta
+`T_ACTUATOR_RECEIVED`, con deadline experimental de 500000 us.
 
-El nucleo embebido ya implementa adquisicion ADC simulada, procesamiento de seguridad en FreeRTOS, enclavamiento fail-safe, rearme manual condicionado, timeout de sensores y medicion temporal. La visualizacion Godot se mantiene como herramienta auxiliar: no contiene la logica critica ni controla actuadores reales.
+| Evidencia | Estado |
+| --- | --- |
+| Campana historica Wokwi | WORT observado 22504 us, 25 corridas, 0 fallas de deadline. |
+| Arbol actual | Resultados temporales finales pendientes de una nueva regresion Wokwi. |
+| Validacion local | Tests host, bridge, Godot, Blender, builds PlatformIO y escaneo de secretos. |
 
-## Validacion actual
+Los CSV en `simulation/results/` son evidencia historica y no deben presentarse
+como medicion vigente del arbol actual hasta completar la regresion final.
+Detalles: `docs/analisis_temporal.md`, `docs/resultados_temporales.md` y
+`docs/matriz_trazabilidad.md`.
 
-El criterio temporal principal (`RT-03`) se mide desde `T_CRITICAL_CONFIRMED` hasta `T_ACTUATOR_RECEIVED`.
+## Reproduccion desde cero
 
-| Metrica | Resultado |
-| --- | ---: |
-| Deadline experimental | 500000 us |
-| Worst Observed Response Time | 22504 us |
-| Margen observado | 477496 us |
-| Corridas temporales | 25 |
-| Fallas de deadline | 0 |
+Requisitos usados en esta revision:
 
-La evidencia esta documentada en:
+| Herramienta | Version usada | Instalacion reproducible |
+| --- | --- | --- |
+| Python | 3.14.3 | Instalar Python 3 y usar `py` o `python` desde `PATH`. |
+| PlatformIO Core | 6.1.19 | Se instala en el entorno virtual con `requirements-dev.txt`. |
+| Godot | 4.7.2 stable | Instalar Godot 4 y agregar `godot` a `PATH`, o usar un binario local ignorado en `tools/godot/`. |
+| Blender | 5.1.0 | Instalar Blender y agregar `blender` a `PATH`. |
+| Wokwi CLI | 0.26.1 | Binario local ignorado en `tools/`; solo necesario para las fases Wokwi. |
 
-- `docs/analisis_temporal.md`
-- `docs/resultados_temporales.md`
-- `docs/matriz_trazabilidad.md`
-- `simulation/results/`
-
-## Ejecucion local
-
-Compilar firmware normal:
+Clonar y seleccionar la rama de trabajo:
 
 ```powershell
-.\.venv\Scripts\platformio run -e esp32doit-devkit-v1
+git clone https://github.com/josuealejandroma-web/SIGAS-RT.git
+cd SIGAS-RT
+git switch feature/godot-digital-twin
 ```
 
-Ejecutar mediciones temporales:
+Crear el entorno Python e instalar dependencias:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File simulation\run_timing_measurements.ps1 -Runs 20 -LoadRuns 5 -TimeoutMs 30000
+py -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 ```
 
-El token de Wokwi debe estar en la variable de entorno de usuario o de proceso `WOKWI_CLI_TOKEN`. No se almacena en el repositorio.
+`tools/` contiene ejecutables locales opcionales y esta ignorado por Git. Las
+rutas de instalacion dependen de cada equipo; ninguna ruta personal es un
+requisito del proyecto.
+
+## Compilacion
+
+Firmware normal:
+
+```powershell
+.\.venv\Scripts\platformio.exe run -e esp32doit-devkit-v1
+```
+
+Firmware con telemetria para visualizacion:
+
+```powershell
+.\.venv\Scripts\platformio.exe run -e esp32doit-devkit-v1-visualization
+```
+
+Variante local de carga diagnostica:
+
+```powershell
+.\.venv\Scripts\platformio.exe run -e esp32doit-devkit-v1-diagnostic-load
+```
+
+## Validacion local sin Wokwi
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\verify_all.ps1 -SkipWokwi
+```
+
+Este comando ejecuta tests host del firmware, bridge, resumen temporal, Blender,
+Godot, builds PlatformIO, seleccion de artefactos, `git diff --check` y secret
+scan. No inicia Wokwi ni genera una campana temporal cuando se usa
+`-SkipWokwi`.
 
 ## Gemelo digital local
 
-El gemelo digital esta en `visualization/`:
-
-- `visualization/godot/`: casa 3D con tuberias, sensores, ESP32, valvula, LEDs, buzzer, HUD y camara orbital.
-- `visualization/bridge/`: bridge Python local entre Wokwi CLI y Godot.
-- `visualization/scenarios/`: comandos permitidos y metadatos visuales.
-
-Ejecutar pruebas del bridge:
+Abrir Godot sin bridge:
 
 ```powershell
-python -m unittest discover visualization\bridge\tests
+godot --path visualization\godot
 ```
 
-Compilar firmware con telemetria para visualizacion:
+La aplicacion inicia en exploracion libre. En el HUD completo:
+
+- `Demo sintetica` ejecuta una secuencia manual local, rotulada
+  `SYNTHETIC DEMO`.
+- `Replay grabado` reproduce la captura historica identificada, rotulada
+  `RECORDED REPLAY`.
+- `Space` o `P` pausa y reanuda cualquiera de esas dos fuentes locales.
+
+Las pruebas headless pueden ejecutarse por separado:
 
 ```powershell
-.\.venv\Scripts\platformio run -e esp32doit-devkit-v1-visualization
+godot --headless --path visualization\godot --quit
+godot --headless --path visualization\godot --script res://scripts/VisualSelfTest.gd
+godot --headless --path visualization\godot --script res://scripts/FreeWalkSelfTest.gd
+godot --headless --path visualization\godot --script res://scripts/TelemetrySelfTest.gd
 ```
 
-Abrir el gemelo digital y bridge local:
+El recorrido maestro de Blender esta en
+`visualization/blender/source/sigas_house.blend`: 15 ambientes, 529 frames a
+24 FPS y aproximadamente 22.04 segundos.
+
+## Bridge y Wokwi
+
+Wokwi solo es necesario para telemetria en vivo y regresiones temporales. El
+token debe existir exclusivamente como variable de entorno de Windows con el
+nombre `WOKWI_CLI_TOKEN`; no debe guardarse en `.env`, archivos MCP, archivos
+del proyecto, Git o documentacion.
+
+Para persistir un valor ya cargado de forma segura en `$token` y propagarlo a
+la terminal actual sin imprimirlo:
+
+```powershell
+[Environment]::SetEnvironmentVariable("WOKWI_CLI_TOKEN", $token, "User")
+$env:WOKWI_CLI_TOKEN = [Environment]::GetEnvironmentVariable("WOKWI_CLI_TOKEN", "User")
+```
+
+Con Wokwi CLI disponible y la variable configurada, iniciar bridge y Godot:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\run_digital_twin.ps1
 ```
 
-El script usa primero `tools\godot\godot.cmd` si existe; si no, busca `godot` en `PATH`. Si Godot no esta disponible, deja claro que debe instalarse Godot 4 o abrirse manualmente el proyecto `visualization\godot`.
-
-## Verificacion
-
-Verificacion local amplia:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\verify_all.ps1
-```
-
-La validacion Wokwi requiere `WOKWI_CLI_TOKEN` en el entorno. La validacion headless de Godot usa `tools\godot\godot.cmd` o `godot` en `PATH`; no almacena credenciales.
+El bridge acepta solo escenarios permitidos, usa UDP local y no controla
+actuadores criticos. La campana temporal se ejecuta unicamente en una fase de
+validacion Wokwi expresamente autorizada.
 
 ## Limitaciones
 
-- Wokwi no certifica comportamiento hard real-time ni tiempos fisicos de actuadores.
+- Wokwi no certifica hard real-time ni tiempos fisicos de actuadores.
 - Los umbrales ADC son experimentales de simulacion, no ppm certificados.
-- El gemelo digital es observabilidad y demostracion local; la funcion critica permanece en ESP32/FreeRTOS.
+- Los sensores MQ, el servo, el modelo 3D y la fuga visual no certifican una
+  instalacion real de gas.

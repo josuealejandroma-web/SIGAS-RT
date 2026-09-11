@@ -1,19 +1,19 @@
-# Resultados de simulacion SIGAS-RT
+# Resultados historicos de simulacion SIGAS-RT
 
 ## Alcance
 
-Estos resultados corresponden al prototipo academico ejecutado en Wokwi CLI. No representan una certificacion industrial ni validacion sobre una instalacion real de gas.
+Estos resultados corresponden a la campana historica del prototipo academico ejecutada en Wokwi CLI. No representan una certificacion industrial ni validacion sobre una instalacion real de gas. El arbol actual requiere una nueva regresion Wokwi antes de declarar resultados temporales finales vigentes.
 
 ## Resumen
 
 | Grupo | Evidencia | Resultado |
 | --- | --- | --- |
-| HW | Compilacion PlatformIO y arranque de perifericos simulados | PASS |
-| IT | Integracion FreeRTOS con colas y tareas separadas | PASS |
-| CL | Logica critica, enclavamiento, falso positivo, rearme y timeout | PASS |
-| TT | Medicion temporal repetida | PASS |
+| HW | Compilacion PlatformIO y arranque de perifericos simulados | PASS HISTORICO WOKWI |
+| IT | Integracion FreeRTOS con colas y tareas separadas | PASS HISTORICO WOKWI |
+| CL | Logica critica, enclavamiento, falso positivo, rearme y timeout | PASS HISTORICO WOKWI |
+| TT | Medicion temporal repetida | PASS HISTORICO WOKWI; PENDIENTE REGRESION WOKWI FINAL |
 
-## Tiempo real
+## Tiempo real historico
 
 | Metrica | Valor |
 | --- | ---: |

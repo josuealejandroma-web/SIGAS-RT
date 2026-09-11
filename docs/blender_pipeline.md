@@ -4,7 +4,7 @@
 
 | Elemento | Resultado |
 | --- | --- |
-| Ejecutable | `C:\Program Files\Blender Foundation\Blender 5.1\blender.exe` |
+| Ejecutable | `blender` disponible en `PATH` |
 | Version | Blender 5.1.0 |
 | Headless | PASS con `--background --factory-startup` |
 | `bpy` | PASS con importacion de `bpy` y lectura de `bpy.app.version_string` |
@@ -39,6 +39,8 @@ La linea de tiempo contiene un recorrido guiado de 529 fotogramas a 24 FPS, apro
 
 La coleccion `SIGAS_BlenderInteriorTour` contiene solamente camara, objetivo y luces de presentacion. `create_scene.py` exporta el GLB antes de crear esta coleccion, por lo que estos elementos no se incorporan al modelo consumido por Godot.
 
+`validate_scene.py` recorre todos los frames del 1 al 529 y contrasta la posicion de la camara con los limites de cada muro. La transicion Panel de control -> Cocina se desvia con claves intermedias; los frames 143, 144 y 145 se reportan explicitamente y quedan fuera de `SIGAS_InteriorWall_Kitchen`.
+
 ## Pulido visual aplicado
 
 La escena se genera por scripts y no requiere edicion manual en Blender. El pulido visual agrega:
@@ -57,7 +59,7 @@ La escena se genera por scripts y no requiere edicion manual en Blender. El puli
 ## Regeneracion
 
 ```powershell
-& "C:\Program Files\Blender Foundation\Blender 5.1\blender.exe" --background --factory-startup --python visualization\blender\scripts\create_scene.py
+blender --background --factory-startup --python visualization\blender\scripts\create_scene.py
 tools\godot\godot.cmd --headless --path visualization\godot --import
 tools\godot\godot.cmd --headless --path visualization\godot --script res://scripts/VisualSelfTest.gd
 ```

@@ -105,20 +105,20 @@ tools\godot\godot.cmd --headless --path visualization\godot --import
 
 | Elemento | Resultado |
 | --- | --- |
-| Godot instalado | `4.7.2.stable.official.ed1daf0bf` en `tools/godot/` |
-| Headless | PASS con `tools\godot\godot.cmd --headless --path visualization\godot --quit` |
-| Autoinspeccion visual | PASS con `GODOT_VISUAL_SELF_TEST: PASS` |
-| Navegacion interactiva | PASS con casos `FREE-01` a `FREE-17`, colision de fachada, mueble de cocina, entrada, escalera y telemetria concurrente |
-| Telemetria y fuentes | PASS local con casos `A01-01` a `A01-06`, eventos temporales estrictos y `A03-01` a `A03-03` |
-| Captura grafica Godot | PASS a 1280x720 con Vulkan Forward+ en exterior, cocina, planta alta, dormitorio, balcon y vista tecnica |
-| Apertura grafica | PASS; Godot inicio con Vulkan Forward+ sobre Intel HD Graphics 620 |
-| Blender | PASS con Blender 5.1.0, `bpy` y exportacion GLB |
-| Casa importada | PASS; `sigas_house.glb` contiene casa de dos pisos, tuberias, sensores, medidor, valvulas, ESP32, LEDs, buzzer y markers |
-| Bridge UDP | PASS; `RUN_NORMAL` recibio `SYSTEM_STARTUP` y `SYSTEM_NORMAL` desde Wokwi |
-| Wokwi visual-safe | PASS; telemetria `@SIGAS` con valvula cerrada en startup y abierta en normal |
+| Godot instalado | `PASS LOCAL`; version `4.7.2.stable.official.ed1daf0bf` |
+| Headless | `PASS LOCAL` con `godot --headless --path visualization\godot --quit` |
+| Autoinspeccion visual | `PASS LOCAL` con `GODOT_VISUAL_SELF_TEST: PASS` |
+| Navegacion interactiva | `PASS LOCAL` con `FREE-01` a `FREE-17` y `M07-QUICK-*` |
+| Telemetria y fuentes | `PASS LOCAL` con A01, A02 y A03 |
+| Captura grafica Godot | `PASS LOCAL` historico a 1280x720 en las vistas documentadas |
+| Apertura grafica | `PASS LOCAL` historico con Vulkan Forward+ |
+| Blender | `PASS LOCAL` con Blender 5.1.0, `bpy` y validacion del recorrido |
+| Casa importada | `PASS LOCAL`; `sigas_house.glb` contiene casa, sistema de gas y markers |
+| Bridge UDP con Wokwi | `PASS HISTORICO WOKWI`; no ejecutado en este bloque |
+| Wokwi visual-safe | `PASS HISTORICO WOKWI`; no ejecutado en este bloque |
 | FULL DEMO | Cubierto por comando `FULL_DEMO` asociado a `critical_logic_test.yaml` |
-| Desconexion Godot | PASS por prueba de bridge/Wokwi sin requerir receptor Godot para continuar firmware |
-| Desconexion bridge | PASS por regresion Wokwi directa; la funcion critica no depende del bridge |
+| Desconexion Godot | `PASS LOCAL` con fakes y `PASS HISTORICO WOKWI` |
+| Desconexion bridge | `PASS LOCAL` con fakes y `PASS HISTORICO WOKWI`; la funcion critica no depende del bridge |
 
 ## Limitaciones encontradas
 
