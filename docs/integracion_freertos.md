@@ -2,7 +2,7 @@
 
 ## 1. Objetivo
 
-Este bloque verifica la arquitectura concurrente Sensor -> ADC -> CPU -> Actuador. No constituye validacion final de seguridad, certificacion Hard Real-Time ni analisis WCRT.
+Este bloque verifica la arquitectura concurrente Sensor -> ADC -> CPU -> Actuador. No constituye validacion final de seguridad, certificacion Hard Real-Time ni una cota temporal analitica garantizada.
 
 ## 2. Arquitectura de tareas
 
@@ -171,6 +171,6 @@ El escenario `simulation/freertos_integration_test.yaml` termino correctamente c
 ## 12. Limitaciones
 
 - La clasificacion es logica de integracion experimental para Wokwi, no algoritmo certificado de seguridad.
-- La confirmacion por multiples muestras, histeresis, enclavamiento, rearme seguro y timeout de datos de sensor ya estan implementados; WCRT formal queda fuera de este bloque.
+- La confirmacion por multiples muestras, histeresis, enclavamiento, rearme seguro y timeout de datos de sensor ya estan implementados; una cota temporal analitica garantizada queda fuera de este bloque.
 - El cierre queda enclavado despues de condicion critica confirmada; el boton reabre solo con ambas zonas seguras y debounce cumplido.
 - Los valores ADC provienen de simulacion y no representan concentracion certificada de gas.

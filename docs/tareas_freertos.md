@@ -116,7 +116,11 @@ Variables logicas:
 
 No se debe mezclar la orden al actuador con el movimiento fisico completo del actuador. En simulacion, el servo representa una valvula academica, no una valvula certificada.
 
-El analisis temporal esta documentado en `docs/analisis_temporal.md`. La campana historica observo un maximo de 22504 us para `T_ACTUATOR_RECEIVED - T_CRITICAL_CONFIRMED` frente a un deadline de 500000 us. El arbol actual requiere una nueva regresion Wokwi antes de declarar resultados temporales finales vigentes.
+El analisis temporal esta documentado en `docs/analisis_temporal.md`. La campana
+historica observo un maximo de 22504 us para
+`T_ACTUATOR_RECEIVED - T_CRITICAL_CONFIRMED`. La campana temporal final observo
+22346 us en el commit `679b489abe2d166ed1c0a60a50c5b4c0baa9d195`, con
+25/25 corridas dentro del deadline de 500000 us.
 
 ## Reglas de implementacion
 

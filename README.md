@@ -19,12 +19,13 @@ El criterio `RT-03` mide desde `T_CRITICAL_CONFIRMED` hasta
 
 | Evidencia | Estado |
 | --- | --- |
-| Campana historica Wokwi | WORT observado 22504 us, 25 corridas, 0 fallas de deadline. |
-| Arbol actual | Resultados temporales finales pendientes de una nueva regresion Wokwi. |
+| Campana historica Wokwi | Worst Observed Response Time 22504 us, 25 corridas, 0 fallas de deadline. |
+| Campana temporal final | `PASS WOKWI FINAL`: Worst Observed Response Time 22346 us, 25 corridas, 0 fallas de deadline y margen de 477654 us (95.5308 %). |
+| Revision medida | Commit `679b489abe2d166ed1c0a60a50c5b4c0baa9d195`; firmware critico equivalente a `9ae0c351a17d3f7b37aae30eeda405836dfe81bc`. |
 | Validacion local | Tests host, bridge, Godot, Blender, builds PlatformIO y escaneo de secretos. |
 
-Los CSV en `simulation/results/` son evidencia historica y no deben presentarse
-como medicion vigente del arbol actual hasta completar la regresion final.
+Los CSV en `simulation/results/` contienen la campana temporal final y estan
+identificados por `simulation/results/final_validation_manifest.json`.
 Detalles: `docs/analisis_temporal.md`, `docs/resultados_temporales.md` y
 `docs/matriz_trazabilidad.md`.
 

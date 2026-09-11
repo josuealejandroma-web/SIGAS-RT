@@ -10,10 +10,11 @@ Sensor -> ADC -> TaskSensors -> sensorQueue -> TaskSafety -> actuatorQueue -> Ta
 
 cumple el deadline experimental definido para el prototipo academico SIGAS-RT.
 
-Los resultados temporales corresponden a una simulacion ejecutada previamente
-en Wokwi y permiten verificar el comportamiento temporal de aquella revision
-del prototipo academico. No constituyen certificacion de un sistema Hard
-Real-Time sobre hardware fisico ni evidencia temporal final del arbol actual.
+Este analisis conserva la campana historica anterior y registra la campana
+temporal final ejecutada en Wokwi sobre el commit
+`679b489abe2d166ed1c0a60a50c5b4c0baa9d195`, cuyo firmware critico es
+equivalente a `9ae0c351a17d3f7b37aae30eeda405836dfe81bc`. Los resultados no
+constituyen certificacion de un sistema Hard Real-Time sobre hardware fisico.
 
 ## Deadline
 
@@ -59,18 +60,18 @@ Se agrego instrumentacion con `esp_timer_get_time()` y logs compactos `[TIMING]`
 
 `simulation/generate_wcet_summary.py` regenera de forma determinista el
 resumen de tiempos de ejecucion observados desde `wcet_observed.csv`. El
-archivo historico conserva su nombre, pero no representa un WCET formal.
+archivo conserva su nombre historico, pero reporta Observed Execution Time y no
+una cota garantizada.
 
-La campaña historica contiene 25 corridas temporales:
+La campana temporal final contiene 25 corridas:
 
 - 20 corridas normales para TT-01, TT-02, TT-03 y TT-05.
 - 5 corridas con carga artificial controlada en `TaskDiagnostics` para TT-04.
 
-El arbol actual incorpora correcciones locales posteriores a esa campana y
-requiere una nueva regresion Wokwi antes de declarar resultados temporales
-finales. Esa regresion no forma parte de este bloque.
+Las mismas cantidades se usaron en la campana historica anterior. Sus valores se
+mantienen separados de los CSV finales.
 
-## Resultados temporales historicos
+## Campana historica anterior
 
 | Grupo | Metrica | Min us | Promedio us | Mediana us | Max us | P95 us | P99 us |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -83,22 +84,41 @@ finales. Esa regresion no forma parte de este bloque.
 | Diagnostico con carga | `post_confirmation_applied_us` | 22931 | 22948.6 | 22931 | 23019 | 23019 | 23019 |
 | Diagnostico con carga | `end_to_end_received_us` | 222465 | 222482.8 | 222465 | 222554 | 222554 | 222554 |
 
+## Campana temporal final
+
+Los calculos directos sobre `timing_runs.csv` confirmaron 25 filas completas,
+20 normales y 5 con carga diagnostica, con identificadores unicos, timestamps
+causalmente ordenados y cero campos criticos vacios o valores negativos.
+`timing_summary.csv` coincide con las estadisticas calculadas desde los datos
+crudos.
+
+| Grupo | Metrica | Min us | Promedio us | Mediana us | Max us | P95 us | P99 us |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Normal | `confirmation_us` | 200057 | 200058.15 | 200058 | 200059 | 200059 | 200059 |
+| Normal | `post_confirmation_received_us` | 22280 | 22303.10 | 22280.5 | 22346 | 22346 | 22346 |
+| Normal | `post_confirmation_applied_us` | 22644 | 22727.55 | 22645 | 22882 | 22882 | 22882 |
+| Normal | `end_to_end_received_us` | 222337 | 222361.25 | 222339 | 222404 | 222404 | 222404 |
+| Diagnostico con carga | `confirmation_us` | 200058 | 200058.00 | 200058 | 200058 | 200058 | 200058 |
+| Diagnostico con carga | `post_confirmation_received_us` | 22281 | 22320.00 | 22346 | 22346 | 22346 | 22346 |
+| Diagnostico con carga | `post_confirmation_applied_us` | 22645 | 22787.20 | 22882 | 22882 | 22882 | 22882 |
+| Diagnostico con carga | `end_to_end_received_us` | 222339 | 222378.00 | 222404 | 222404 | 222404 | 222404 |
+
 ## Worst Observed Response Time
 
 El maximo observado para el criterio `RT-03` fue:
 
 ```text
-Worst Observed Response Time (WORT) = 22504 us
+Worst Observed Response Time = 22346 us
 Deadline = 500000 us
-Safety Margin = 477496 us
-MarginPercent = 95.50 %
+Safety Margin = 477654 us
+MarginPercent = 95.5308 %
 ```
 
 Todas las corridas medidas cumplieron el deadline:
 
 | runs_total | passes | fails | worst_response_us | deadline_us | margin_us |
 | ---: | ---: | ---: | ---: | ---: | ---: |
-| 25 | 25 | 0 | 22504 | 500000 | 477496 |
+| 25 | 25 | 0 | 22346 | 500000 | 477654 |
 
 ## Periodicidad y confirmacion
 
@@ -129,7 +149,11 @@ dependiendo de la fase relativa entre el evento fisico y el periodo de muestreo.
 | `TaskSensors` | Periodica, 100 ms | 3 | Critica de adquisicion | Publica muestra mas reciente. |
 | `TaskDiagnostics` | Periodica, 500 ms | 1 | No critica | Puede consumir CPU y Serial, pero tiene menor prioridad. |
 
-La prueba TT-04 compilo una variante con `SIGAS_RT_DIAGNOSTICS_LOAD`, que ejecuta una carga artificial controlada en `TaskDiagnostics`. El peor `post_confirmation_received_us` bajo carga fue 22502 us. La tarea de diagnostico no impidio la ejecucion de `TaskSafety` ni de `TaskActuator` en estas mediciones.
+La prueba TT-04 compilo una variante con `SIGAS_RT_DIAGNOSTICS_LOAD`, que
+ejecuta una carga artificial controlada en `TaskDiagnostics`. El peor
+`post_confirmation_received_us` bajo carga fue 22346 us. La tarea de
+diagnostico no impidio la ejecucion de `TaskSafety` ni de `TaskActuator` en
+estas mediciones.
 
 ## Utilizacion observada
 
@@ -138,41 +162,44 @@ Tiempos de ejecucion observados regenerados desde
 
 | Tarea | Muestras | Min us | Promedio us | Max us |
 | --- | ---: | ---: | ---: | ---: |
-| `TaskActuator` | 25 | 1004 | 1005.64 | 1007 |
-| `TaskSafety` | 50 | 1837 | 2117.20 | 2435 |
-| `TaskSensors` | 50 | 2737 | 2976.60 | 3309 |
+| `TaskActuator` | 25 | 847 | 980.76 | 1008 |
+| `TaskSafety` | 49 | 1766 | 1831.84 | 1895 |
+| `TaskSensors` | 49 | 2584 | 2704.53 | 2765 |
 
 Maximos observados usados para la estimacion informativa:
 
 | Tarea | C observado max us | Periodo considerado | Utilizacion |
 | --- | ---: | ---: | ---: |
-| `TaskSensors` | 3309 | 100000 us | 0.03309 |
-| `TaskDiagnostics` | No instrumentada como WCET critico | 500000 us | No calculada |
+| `TaskSensors` | 2765 | 100000 us | 0.02765 |
+| `TaskDiagnostics` | No instrumentada para Observed Execution Time | 500000 us | No calculada |
 
 Para las tareas event-driven no se aplica una utilizacion periodica directa sin asumir una tasa maxima de eventos. Como cota informativa, si se toma una activacion por muestra de sensor:
 
 | Tarea | C observado max us | Periodo hipotetico | Utilizacion informativa |
 | --- | ---: | ---: | ---: |
-| `TaskSafety` | 2435 | 100000 us | 0.02435 |
-| `TaskActuator` | 1007 | 100000 us | 0.01007 |
+| `TaskSafety` | 1895 | 100000 us | 0.01895 |
+| `TaskActuator` | 1008 | 100000 us | 0.01008 |
 
 Con esa hipotesis, la suma informativa para la ruta critica seria:
 
 ```text
-U_total ~= (3309 + 2435 + 1007) / 100000 = 0.06751
+U_total ~= (2765 + 1895 + 1008) / 100000 = 0.05668
 ```
 
 Este valor no es una prueba formal de planificabilidad RMS. Las prioridades no fueron asignadas estrictamente por periodo; fueron asignadas por criticidad funcional. Un analisis RMS solo seria valido bajo supuestos adicionales de tareas periodicas independientes, deadlines relativos iguales a periodos y prioridades monotonicamente asignadas por periodo.
 
-## WCRT observado y analitico
+## Alcance del resultado observado
 
-El maximo medido se reporta como WORT, no como WCRT formal:
+El maximo medido se reporta exclusivamente como Worst Observed Response Time:
 
 ```text
-WORT = 22504 us
+Worst Observed Response Time = 22346 us
 ```
 
-No se presenta un WCRT analitico formal porque la ejecucion ocurre en Wokwi, sobre Arduino/FreeRTOS, con simulacion y sin una caracterizacion completa de interrupciones, tiempos de libreria, temporizacion del host ni modelo certificado del actuador.
+No se presenta una cota analitica garantizada porque la ejecucion ocurre en
+Wokwi, sobre Arduino/FreeRTOS, con simulacion y sin una caracterizacion completa
+de interrupciones, tiempos de libreria, temporizacion del host ni modelo
+certificado del actuador.
 
 ## Movimiento fisico del servo
 
@@ -187,11 +214,14 @@ El servomotor simulado no representa tiempos reales de una electrovalvula certif
 - `T_FIRST_HIGH` mide el inicio del candidato alto que confirma; cada zona
   mantiene su propio candidato y lo descarta si deja `HIGH`. Si ambas zonas
   confirman en la misma evaluacion se usa el candidato confirmado mas antiguo.
-- Los valores de las 25 corridas son historicos y deben renovarse para validar
-  temporalmente el arbol posterior a A04/A05/M05.
+- Los CSV actuales corresponden a la campana temporal final identificada por el
+  manifest de validacion; la campana historica se conserva solo como referencia
+  documental.
 - El timeout CL-10 se automatizo con build flag de prueba, sin alterar el firmware normal.
 - No hay certificacion industrial ni validacion sobre hardware fisico.
 
 ## Interpretacion
 
-El prototipo simulado cumple `RT-03` en todas las corridas ejecutadas. El margen observado es amplio frente a 500 ms, pero debe interpretarse como evidencia experimental del prototipo, no como garantia hard real-time formal.
+El prototipo simulado cumplio el deadline experimental de 500000 us en las 25
+corridas ejecutadas. El margen observado debe interpretarse como evidencia
+experimental del prototipo, no como garantia fisica ni certificacion.

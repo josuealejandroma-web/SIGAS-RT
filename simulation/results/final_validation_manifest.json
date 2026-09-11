@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "commit_sha": "679b489abe2d166ed1c0a60a50c5b4c0baa9d195",
+  "firmware_base_commit": "9ae0c351a17d3f7b37aae30eeda405836dfe81bc",
+  "branch": "feature/godot-digital-twin",
+  "fecha_hora": "2026-09-11T13:16:47-04:00",
+  "total_runs": 25,
+  "normal_runs": 20,
+  "diagnostic_load_runs": 5,
+  "deadline_us": 500000,
+  "worst_observed_response_us": 22346,
+  "margin_us": 477654,
+  "margin_percent": 95.5308,
+  "all_deadlines_pass": true,
+  "functional_wokwi_pass": true,
+  "platformio_version": "6.1.19",
+  "wokwi_cli_version": "0.26.1 (9d71b975b7eb)",
+  "sha256": {
+    "simulation/results/timing_runs.csv": "2ad71739ef42059f3ddaa6d4b8e5917a454768ff63097153532c69cd62877d25",
+    "simulation/results/timing_summary.csv": "111ccc2dc64c0541d64fb97a2a87adbd31e39903acd1b70ec68d5e2e8d413b63",
+    "simulation/results/wcet_observed.csv": "af41e83be5be42d2394f0e611a3c6399d1ce617452b082b2608f1b9206cee1b6",
+    "simulation/results/wcet_summary.csv": "03e43c10c8ebe853095b10997b531a39d826dee1743eea962e7d7409b4ab2370"
+  }
+}
