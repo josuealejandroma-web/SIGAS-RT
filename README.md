@@ -94,6 +94,17 @@ scan. No inicia Wokwi ni genera una campana temporal cuando se usa
 
 ## Gemelo digital local
 
+Blender ofrece un consumidor LIVE alternativo con el modelo maestro y un panel
+de escenarios en `Sidebar (N) > SIGAS-RT`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\run_blender_twin.ps1
+```
+
+Cerrar Blender termina el bridge iniciado por ese launcher. Godot permanece
+como respaldo; usar un solo consumidor UDP a la vez. Detalles, replay y pruebas
+locales: [Blender LIVE](visualization/blender/README.md).
+
 Abrir Godot sin bridge:
 
 ```powershell
