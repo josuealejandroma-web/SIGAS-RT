@@ -105,7 +105,7 @@ export function getValveUpstreamPressure(valve: keyof ValveData, pressure: Press
     case 'VM': return pressure.P0;
     case 'VK': return pressure.P1;
     case 'VL': return pressure.P1;
-    case 'VT': return pressure.PT;
+    case 'VT': return pressure.P1;
     default: return 0;
   }
 }

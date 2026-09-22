@@ -1,23 +1,24 @@
+import path from 'path';
+
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
-import path from 'path';
 
 // https://vite.dev/config/
 export default defineConfig({
     plugins: [react()],
     resolve: {
         alias: {
-            '@': path.resolve(__dirname, './src'),
-        },
+            '@': path.resolve(import.meta.dirname, './src')
+        }
     },
     server: {
         port: 5173,
         host: true,
-        open: true,
+    open: false,
         headers: {
             'Cross-Origin-Embedder-Policy': 'require-corp',
-            'Cross-Origin-Opener-Policy': 'same-origin',
-        },
+            'Cross-Origin-Opener-Policy': 'same-origin'
+        }
     },
     build: {
         target: 'esnext',
@@ -38,14 +39,14 @@ export default defineConfig({
                         }
                         return 'vendor';
                     }
-                },
-            },
-        },
+                }
+            }
+        }
     },
     optimizeDeps: {
-        include: ['@playcanvas/react', 'playcanvas', 'zustand'],
+        include: ['@playcanvas/react', 'playcanvas', 'zustand']
     },
     define: {
-        'import.meta.env.VITE_APP_VERSION': JSON.stringify(process.env.npm_package_version || '0.0.0'),
-    },
+        'import.meta.env.VITE_APP_VERSION': JSON.stringify(process.env.npm_package_version || '0.0.0')
+    }
 });

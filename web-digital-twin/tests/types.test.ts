@@ -59,7 +59,7 @@ describe('Telemetry Types - Utility Functions', () => {
             expect(getValveUpstreamPressure('VM', pressure)).toBe(20);
             expect(getValveUpstreamPressure('VK', pressure)).toBe(18);
             expect(getValveUpstreamPressure('VL', pressure)).toBe(18);
-            expect(getValveUpstreamPressure('VT', pressure)).toBe(15);
+            expect(getValveUpstreamPressure('VT', pressure)).toBe(18);
         });
 
         it('should calculate downstream pressure correctly', () => {
@@ -73,7 +73,7 @@ describe('Telemetry Types - Utility Functions', () => {
             expect(getValveDeltaPressure('VM', pressure)).toBe(2);
             expect(getValveDeltaPressure('VK', pressure)).toBe(1);
             expect(getValveDeltaPressure('VL', pressure)).toBe(2);
-            expect(getValveDeltaPressure('VT', pressure)).toBe(0);
+            expect(getValveDeltaPressure('VT', pressure)).toBe(3);
         });
 
         it('should return 0 for unknown valve', () => {

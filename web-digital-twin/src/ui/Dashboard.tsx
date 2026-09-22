@@ -216,7 +216,7 @@ function getValveUpstream(valve: string, pressure: { P0: number; P1: number; PK:
     case 'VM': return pressure.P0 ?? 0;
     case 'VK': return pressure.P1 ?? 0;
     case 'VL': return pressure.P1 ?? 0;
-    case 'VT': return pressure.PT ?? 0;
+    case 'VT': return pressure.P1 ?? 0;
     default: return 0;
   }
 }

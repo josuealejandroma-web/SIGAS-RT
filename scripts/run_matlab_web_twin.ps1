@@ -1,89 +1,95 @@
-<# 
+<#
 .SYNOPSIS
-    Launcher futuro para SIGAS-RT Web Digital Twin con MATLAB LIVE.
-
-.DESCRIPTION
-    Verifica bridge MATLAB, inicia Vite en modo MATLAB_SIM.
-    Actualmente muestra "MATLAB LIVE TRANSPORT NOT ENABLED" hasta implementar emisor MATLAB.
-
-.NOTES
-    Requiere: Bridge Node.js corriendo (puertos 45810 UDP, 45811 WS)
-    MATLAB: Simulink model con UDP sender block configurado
+    Inicia el gemelo digital web con telemetria MATLAB local y unidireccional.
 #>
 
 param(
+    [string]$Scenario = "V2_NORMAL",
+    [double]$StopTime = 5,
+    [double]$PlaybackRate = 1,
     [switch]$SkipBrowser,
-    [switch]$Lan
+    [switch]$SkipMatlab
 )
 
 $ErrorActionPreference = "Stop"
+$repoRoot = Split-Path -Parent $PSScriptRoot
+$webDir = Join-Path $repoRoot "web-digital-twin"
+$matlabScripts = Join-Path $repoRoot "matlab\scripts"
+$children = [System.Collections.Generic.List[System.Diagnostics.Process]]::new()
 
-$Green  = [ConsoleColor]::Green
-$Yellow = [ConsoleColor]::Yellow
-$Red    = [ConsoleColor]::Red
-$Cyan   = [ConsoleColor]::Cyan
-$Gray   = [ConsoleColor]::DarkGray
-
-function Write-Color($msg, $color) {
-    Write-Host $msg -ForegroundColor $color
+function Start-ChildProcess {
+    param([string]$FilePath, [string[]]$Arguments, [string]$WorkingDirectory)
+    $process = Start-Process -FilePath $FilePath -ArgumentList $Arguments `
+        -WorkingDirectory $WorkingDirectory -WindowStyle Hidden -PassThru
+    $children.Add($process)
+    return $process
 }
 
-function Write-Section($title) {
-    Write-Host ""
-    Write-Color "═══ $title ═══" $Cyan
+function Wait-TcpPort {
+    param([int]$Port, [int]$TimeoutSeconds = 30)
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        try {
+            $client = [System.Net.Sockets.TcpClient]::new()
+            $client.Connect("127.0.0.1", $Port)
+            $client.Dispose()
+            return
+        } catch {
+            Start-Sleep -Milliseconds 250
+        }
+    }
+    throw "Timeout esperando el puerto TCP $Port"
 }
 
-Write-Section "SIGAS-RT WEB DIGITAL TWIN - MATLAB LIVE"
+if (-not (Test-Path (Join-Path $webDir "node_modules"))) {
+    Push-Location $webDir
+    try { & npm.cmd ci } finally { Pop-Location }
+    if ($LASTEXITCODE -ne 0) { throw "npm ci fallo" }
+}
 
-# Verificar bridge
-$bridgeUrl = "ws://localhost:45811"
-Write-Color "Verificando bridge MATLAB en $bridgeUrl..." $Yellow
+$env:BRIDGE_BIND_HOST = "127.0.0.1"
+$env:VITE_FORCE_SOURCE = "MATLAB_SIM"
+$env:VITE_WS_URL = "ws://127.0.0.1:45811"
 
 try {
-    # Test rápido de conexión WebSocket
-    $ws = New-Object System.Net.WebSockets.ClientWebSocket
-    $cts = New-Object System.Threading.CancellationTokenSource
-    $cts.CancelAfter(2000)
-    $ws.ConnectAsync($bridgeUrl, $cts.Token).Wait()
-    $ws.Close()
-    Write-Color "Bridge MATLAB: CONECTADO" $Green
-    $bridgeReady = $true
-} catch {
-    Write-Color "Bridge MATLAB: NO DISPONIBLE" $Red
-    Write-Color ""
-    Write-Color "MATLAB LIVE TRANSPORT NOT ENABLED" $Red
-    Write-Color ""
-    Write-Color "Para habilitar MATLAB LIVE:" $Yellow
-    Write-Color "  1. Iniciar bridge Node.js:" $Gray
-    Write-Color "     cd web-digital-twin/bridge && npm run dev" $Gray
-    Write-Color "  2. Configurar MATLAB UDP sender (puerto 45810)" $Gray
-    Write-Color "  3. Verificar frames schema V2 en bridge logs" $Gray
-    Write-Color ""
-    $bridgeReady = $false
+    Write-Host "Iniciando bridge UDP 45810 -> WebSocket 45811..."
+    $bridge = Start-ChildProcess "npm.cmd" @("run", "bridge") $webDir
+    Wait-TcpPort 45811
+
+    Write-Host "Iniciando web en http://127.0.0.1:5173..."
+    $vite = Start-ChildProcess "npm.cmd" @("run", "dev", "--", "--host", "127.0.0.1") $webDir
+    Wait-TcpPort 5173
+
+    if (-not $SkipBrowser) {
+        Start-Process "http://127.0.0.1:5173"
+    }
+
+    if (-not $SkipMatlab) {
+        $matlab = Get-Command matlab -ErrorAction Stop
+        $escapedRoot = $repoRoot.Replace("'", "''")
+        $escapedScripts = $matlabScripts.Replace("'", "''")
+        $escapedScenario = $Scenario.Replace("'", "''")
+        $command = "cd('$escapedRoot'); addpath('$escapedScripts'); setup_project(); stream_simulation_to_web('$escapedScenario',$StopTime,$PlaybackRate);"
+        $batchArgument = '"' + $command + '"'
+        Write-Host "Iniciando MATLAB: $Scenario ($StopTime s, ${PlaybackRate}x)..."
+        $matlabProcess = Start-ChildProcess $matlab.Source @("-batch", $batchArgument) $repoRoot
+        $matlabProcess.WaitForExit()
+        if ($matlabProcess.ExitCode -ne 0) {
+            throw "MATLAB termino con codigo $($matlabProcess.ExitCode)"
+        }
+        Write-Host "Telemetria MATLAB completada correctamente."
+    } else {
+        Write-Host "Bridge y web listos; MATLAB omitido por -SkipMatlab."
+    }
+
+    Write-Host "Presiona Ctrl+C para cerrar bridge y web."
+    while (-not $bridge.HasExited -and -not $vite.HasExited) {
+        Start-Sleep -Seconds 1
+    }
+} finally {
+    foreach ($process in $children) {
+        if (-not $process.HasExited) {
+            Stop-Process -Id $process.Id -ErrorAction SilentlyContinue
+        }
+    }
 }
-
-if (-not $bridgeReady) {
-    Write-Color "Iniciando en modo MOCK_SIM como fallback..." $Yellow
-    & "$PSScriptRoot\run_web_twin.ps1" @($SkipBrowser, $Lan)
-    exit
-}
-
-# Si bridge está listo, iniciar Vite en modo MATLAB_SIM
-$webDir = Join-Path $PSScriptRoot "..\web-digital-twin"
-Set-Location $webDir
-
-$vitePort = 5173
-$host = if ($Lan) { "0.0.0.0" } else { "localhost" }
-$viteUrl = "http://$host:$vitePort"
-
-Write-Section "INICIANDO VITE (MATLAB_SIM MODE)"
-
-$viteArgs = "run dev"
-if ($Lan) { $viteArgs += " -- --host 0.0.0.0" }
-
-# Set env var para forzar source MATLAB_SIM
-$env:VITE_FORCE_SOURCE = "MATLAB_SIM"
-
-& npm $viteArgs
-
-Write-Color "Presiona Ctrl+C para detener..." $Gray

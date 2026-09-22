@@ -1,6 +1,6 @@
 import { Application, Container, Entity } from '@playcanvas/react';
 import { Camera, Script, Light } from '@playcanvas/react/components';
-import { useModel } from '@playcanvas/react/hooks';
+import { useApp, useModel } from '@playcanvas/react/hooks';
 import { TONEMAP_ACES2 } from 'playcanvas';
 import { CameraControls } from 'playcanvas/scripts/esm/camera-controls.mjs';
 import { ProceduralSky } from 'playcanvas/scripts/esm/sky/procedural-sky.mjs';
@@ -20,11 +20,37 @@ export interface Scene3DProps {
 const LightWithColor = Light as any;
 
 export function Scene3D({ onObjectClick, onSceneReady }: Scene3DProps) {
+  const performanceMode = useDigitalTwinStore(selectPerformanceMode);
+
+  return (
+    <Application
+      canvasId="sigas-canvas"
+      autoRender={true}
+      graphicsDeviceOptions={{
+        powerPreference: 'high-performance',
+        antialias: performanceMode !== 'LOW',
+        alpha: false,
+        preserveDrawingBuffer: false,
+      }}
+    >
+      <SceneContent
+        onObjectClick={onObjectClick}
+        onSceneReady={onSceneReady}
+        performanceMode={performanceMode}
+      />
+    </Application>
+  );
+}
+
+type SceneContentProps = Scene3DProps & {
+  performanceMode: PerformanceMode;
+};
+
+function SceneContent({ onObjectClick, onSceneReady, performanceMode }: SceneContentProps) {
+  const app = useApp();
   const { asset, loading, error } = useModel(MODEL_URL);
   const activeView = useDigitalTwinStore(selectActiveView);
   const activeCameraPreset = useDigitalTwinStore(selectActiveCameraPreset);
-  const performanceMode = useDigitalTwinStore(selectPerformanceMode);
-  const appRef = useRef<any>(null);
   const containerRef = useRef<any>(null);
   const cameraEntityRef = useRef<any>(null);
   const presetTransitionRef = useRef<{ from: CameraPreset; to: CameraPreset; startTime: number; duration: number } | null>(null);
@@ -37,10 +63,10 @@ export function Scene3D({ onObjectClick, onSceneReady }: Scene3DProps) {
   }, [activeCameraPreset]);
 
   useEffect(() => {
-    if (appRef.current && onSceneReady) {
-      onSceneReady(appRef.current);
+    if (onSceneReady) {
+      onSceneReady(app);
     }
-  }, [onSceneReady]);
+  }, [app, onSceneReady]);
 
   const handleEntityClick = (entity: any, event: Event) => {
     if (onObjectClick) {
@@ -108,6 +134,14 @@ export function Scene3D({ onObjectClick, onSceneReady }: Scene3DProps) {
     }
   }, [activeView]);
 
+  useEffect(() => {
+    if (!asset || !cameraEntityRef.current || !cameraPreset) return;
+
+    const camera = cameraEntityRef.current;
+    camera.setPosition(...cameraPreset.position);
+    camera.lookAt(0, 2.5, 0);
+  }, [asset, cameraPreset]);
+
   const animateCameraToPreset = (preset: CameraPreset) => {
     if (!cameraEntityRef.current) return;
     const currentPreset = cameraPreset;
@@ -143,7 +177,7 @@ export function Scene3D({ onObjectClick, onSceneReady }: Scene3DProps) {
   if (error) {
     return (
       <div style={{ padding: 20, color: '#ff6b6b', textAlign: 'center' }}>
-        Failed to load 3D model: {error.message}
+        Failed to load 3D model: {String(error)}
       </div>
     );
   }
@@ -157,17 +191,7 @@ export function Scene3D({ onObjectClick, onSceneReady }: Scene3DProps) {
   }
 
   return (
-    <Application
-      ref={appRef}
-      canvasId="sigas-canvas"
-      autoRender={true}
-      graphicsDeviceOptions={{
-        powerPreference: 'high-performance',
-        antialias: performanceMode !== 'LOW',
-        alpha: false,
-        preserveDrawingBuffer: false,
-      }}
-    >
+    <>
       <Entity name="sky">
         <Script script={ProceduralSky} luminance={0.15} />
       </Entity>
@@ -212,7 +236,7 @@ export function Scene3D({ onObjectClick, onSceneReady }: Scene3DProps) {
         onClick={handleEntityClick}
         onLoad={(container: any) => applyViewSettings(container)}
       />
-    </Application>
+    </>
   );
 }
 

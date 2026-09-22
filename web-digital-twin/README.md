@@ -114,13 +114,16 @@ npm run dev
 # (cargar archivo .json o .jsonl en UI futura)
 ```
 
-### Modo MATLAB LIVE (futuro)
-Requiere bridge Node.js + MATLAB UDP sender:
+### Modo MATLAB LIVE
+Desde la raiz del repositorio:
 ```powershell
-# Puerto UDP MATLAB → Bridge: 45810
-# Puerto WebSocket Bridge → Browser: 45811
-npm run bridge:matlab  # (por implementar)
+.\scripts\run_matlab_web_twin.ps1 -Scenario V2_NORMAL -StopTime 5
 ```
+
+El lanzador inicia el bridge local, Vite y una simulacion MATLAB. MATLAB envia
+JSON schema v2 por UDP `127.0.0.1:45810`; el bridge valida y publica por
+WebSocket `127.0.0.1:45811`. El canal es solo telemetria: la web no puede
+mandar comandos a actuadores ni participar en decisiones criticas.
 
 ## Escenarios MOCK Disponibles
 
@@ -276,12 +279,12 @@ npm run build     # Vite build - debe PASS
 ```
 Verifica Node, instala deps si faltan, inicia bridge mock, inicia Vite, abre navegador.
 
-## MATLAB LIVE - Protocolo Pendiente
+## MATLAB LIVE - Protocolo Implementado
 
 Para conectar MATLAB en vivo:
-1. MATLAB envía frames UDP a `localhost:45810`
+1. `stream_simulation_to_web` ejecuta un escenario y envía frames UDP a `localhost:45810`
 2. Bridge Node.js recibe UDP, valida, reenvía por WebSocket `ws://localhost:45811`
-3. Browser recibe WebSocket, valida, actualiza store
+3. Browser recibe WebSocket, vuelve a validar y actualiza el store
 
 Frame UDP esperado (JSON):
 ```json

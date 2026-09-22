@@ -25,6 +25,7 @@ __pycache__/
 # Temporales
 *.tmp
 *.temp
+.codex-temp/
 
 # Herramientas locales descargadas
 tools/

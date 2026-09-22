@@ -3,6 +3,8 @@
 Sistema Inteligente de Deteccion y Corte Automatico de Gas en Tiempo Real.
 Es un prototipo academico sobre ESP32, FreeRTOS, PlatformIO y Wokwi, con un
 gemelo digital local auxiliar en Godot y un modelo maestro en Blender.
+Incluye ademas un gemelo web React/PlayCanvas conectado de forma local y de
+solo lectura a las simulaciones MATLAB/Simulink/Simscape.
 
 ```text
 Sensor -> ADC -> CPU -> Procesamiento en Tiempo Real -> Actuador
@@ -40,13 +42,15 @@ Requisitos usados en esta revision:
 | Godot | 4.7.2 stable | Instalar Godot 4 y agregar `godot` a `PATH`, o usar un binario local ignorado en `tools/godot/`. |
 | Blender | 5.1.0 | Instalar Blender y agregar `blender` a `PATH`. |
 | Wokwi CLI | 0.26.1 | Binario local ignorado en `tools/`; solo necesario para las fases Wokwi. |
+| Node.js | 22.23.2 o posterior | Necesario para `web-digital-twin/`, con `npm` incluido. |
+| MATLAB | R2026a | Requiere Simulink, Simscape, Stateflow y Simscape Fluids para el modelo de gas. |
 
 Clonar y seleccionar la rama de trabajo:
 
 ```powershell
 git clone https://github.com/josuealejandroma-web/SIGAS-RT.git
 cd SIGAS-RT
-git switch feature/godot-digital-twin
+git switch main
 ```
 
 Crear el entorno Python e instalar dependencias:
@@ -60,6 +64,10 @@ py -m venv .venv
 `tools/` contiene ejecutables locales opcionales y esta ignorado por Git. Las
 rutas de instalacion dependen de cada equipo; ninguna ruta personal es un
 requisito del proyecto.
+
+La guia completa para preparar otro equipo, comprobar productos, resolver
+puertos y validar cada capa esta en
+[`docs/instalacion_otro_dispositivo.md`](docs/instalacion_otro_dispositivo.md).
 
 ## Compilacion
 
@@ -93,6 +101,25 @@ scan. No inicia Wokwi ni genera una campana temporal cuando se usa
 `-SkipWokwi`.
 
 ## Gemelo digital local
+
+Gemelo web sin MATLAB (datos sinteticos locales):
+
+```powershell
+cd web-digital-twin
+npm ci
+npm run dev
+```
+
+Gemelo web con MATLAB/Simulink/Simscape, desde la raiz del repositorio:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\run_matlab_web_twin.ps1 `
+  -Scenario V2_NORMAL -StopTime 30 -PlaybackRate 1
+```
+
+El lanzador deja web y bridge activos hasta `Ctrl+C`. `LIVE MATLAB_SIM` aparece
+solo mientras llegan tramas; tras 1.5 s pasa a `STALE` y tras 3 s a
+`DISCONNECTED`, de forma intencional para no presentar telemetria vieja.
 
 Blender ofrece un consumidor LIVE alternativo con el modelo maestro y un panel
 de escenarios en `Sidebar (N) > SIGAS-RT`:

@@ -93,3 +93,22 @@ Ninguno de estos cinco indicadores decide si existe fuga, modifica `SystemState`
 ## Validacion sin Wokwi
 
 Sin ejecutar Wokwi, Godot se valida con `VisualSelfTest.gd`, `FreeWalkSelfTest.gd` y `TelemetrySelfTest.gd`. El replay grabado y la demo sintetica no reemplazan evidencia Wokwi nueva; permiten comprobar importacion, navegacion, contrato, expiracion y respuesta visual local.
+
+## Gemelo web y MATLAB
+
+La visualizacion web de `web-digital-twin/` dispone de dos modos separados:
+
+- `MOCK DEMO`, generado enteramente en el navegador para desarrollo visual;
+- `MATLAB STREAM`, alimentado localmente por una simulacion terminada de `SIGAS_GasNetwork`.
+
+En el segundo modo, `matlab/scripts/stream_simulation_to_web.m` ejecuta el escenario mediante `Simulink.SimulationInput`, convierte el vector de telemetria de 25 elementos al contrato JSON v2 y lo reproduce temporalmente por UDP en `127.0.0.1:45810`. El envio usa el socket UDP de Java incluido en MATLAB y no requiere Instrument Control Toolbox. `web-digital-twin/src/bridge/server.ts` valida los mensajes, acepta exclusivamente la fuente `MATLAB_SIM` y los publica por WebSocket en `127.0.0.1:45811`. El navegador vuelve a validar cada trama antes de actualizar el estado visual.
+
+El canal es unidireccional y de solo lectura:
+
+```text
+Simulink -> adaptador MATLAB -> UDP local -> bridge validador -> WebSocket local -> React/PlayCanvas
+```
+
+Los mensajes enviados desde el navegador al bridge se rechazan. La web no puede ordenar valvulas, buzzer ni LEDs y no participa en la cadena critica `Sensor -> ADC -> CPU -> Procesamiento tiempo real -> Actuador`. El lanzador local es `scripts/run_matlab_web_twin.ps1`; inicia solo sus procesos auxiliares y los cierra al terminar.
+
+La emision ocurre despues de completar la simulacion y conserva sus marcas de tiempo durante la reproduccion. Por ello la interfaz usa la etiqueta `MATLAB STREAM`, no afirma que el solver se ejecute sincronizado en tiempo real.

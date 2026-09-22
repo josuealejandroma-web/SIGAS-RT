@@ -479,11 +479,16 @@ BRIDGE_LOG_LEVEL=info
 VITE_WS_URL=ws://localhost:45811
 ```
 
-## Roadmap
+## Estado implementado
 
-- [ ] Bridge implementation completa (Node.js)
-- [ ] MATLAB Function block sender
-- [ ] Comando browser → MATLAB (setScenario, reset) con ACK
+- [x] Bridge Node.js UDP/WebSocket local y read-only
+- [x] Adaptador MATLAB del vector de telemetria Simulink al JSON schema v2
+- [x] Cliente WebSocket React con doble validacion
+- [x] Lanzador coordinado PowerShell
+
+## Trabajo futuro
+
+- [ ] Emision durante ejecucion del solver en lugar de replay temporal posterior
 - [ ] TLS/WSS para deployment remoto
 - [ ] Métricas de latencia end-to-end
 - [ ] Buffer de reordenamiento UDP (out-of-order)

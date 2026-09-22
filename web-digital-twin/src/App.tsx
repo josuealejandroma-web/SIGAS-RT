@@ -9,21 +9,32 @@ import { useDigitalTwinStore } from './state/store';
 import { validateTelemetryFrame } from './telemetry/validator';
 import { createMockSimulator } from './scenarios/mockSimulator';
 import { createReplayPlayer } from './replay/replayManager';
-import { createBridge } from './bridge/bridge';
+import { useMatlabBridge } from './bridge/useMatlabBridge';
 import './App.css';
 
 function App() {
   const mockSimulatorRef = useRef<ReturnType<typeof createMockSimulator> | null>(null);
   const replayPlayerRef = useRef<ReturnType<typeof createReplayPlayer> | null>(null);
-  const bridgeRef = useRef<ReturnType<typeof createBridge> | null>(null);
+  const matlabMode = import.meta.env.VITE_FORCE_SOURCE === 'MATLAB_SIM';
+  useMatlabBridge(matlabMode);
   const connectionCheckIntervalRef = useRef<number | null>(null);
   const performanceIntervalRef = useRef<number | null>(null);
   const lastFrameTimeRef = useRef<number>(0);
 
+  const handleTelemetryFrame = useCallback((frame: unknown) => {
+    const validated = validateTelemetryFrame(frame);
+    if (validated) {
+      useDigitalTwinStore.getState().setTelemetryFrame(validated);
+      lastFrameTimeRef.current = performance.now();
+    }
+  }, []);
+
   useEffect(() => {
-    mockSimulatorRef.current = createMockSimulator(handleTelemetryFrame);
-    mockSimulatorRef.current.setScenario('NORMAL');
-    mockSimulatorRef.current.start();
+    if (!matlabMode) {
+      mockSimulatorRef.current = createMockSimulator(handleTelemetryFrame);
+      mockSimulatorRef.current.setScenario('NORMAL');
+      mockSimulatorRef.current.start();
+    }
 
     replayPlayerRef.current = createReplayPlayer(
       (frame, index, total) => {
@@ -34,9 +45,6 @@ function App() {
         useDigitalTwinStore.getState().setReplaying(false);
       }
     );
-
-    bridgeRef.current = createBridge({ mockMode: true });
-    bridgeRef.current.start();
 
     connectionCheckIntervalRef.current = window.setInterval(() => {
       useDigitalTwinStore.getState().updateConnectionStatus(performance.now());
@@ -66,21 +74,12 @@ function App() {
     return () => {
       mockSimulatorRef.current?.stop();
       replayPlayerRef.current?.stop();
-      bridgeRef.current?.stop();
       if (connectionCheckIntervalRef.current) clearInterval(connectionCheckIntervalRef.current);
       if (performanceIntervalRef.current) clearInterval(performanceIntervalRef.current);
       clearInterval(replayTickInterval);
       window.removeEventListener('mock-scenario-change', handleScenarioChange as EventListener);
     };
-  }, []);
-
-  const handleTelemetryFrame = useCallback((frame: any) => {
-    const validated = validateTelemetryFrame(frame);
-    if (validated) {
-      useDigitalTwinStore.getState().setTelemetryFrame(validated);
-      lastFrameTimeRef.current = performance.now();
-    }
-  }, []);
+  }, [handleTelemetryFrame, matlabMode]);
 
   const handleObjectClick = useCallback((objectName: string) => {
     useDigitalTwinStore.getState().selectObject(objectName);
@@ -126,7 +125,7 @@ function App() {
 
       <footer className="app-footer">
         <div className="footer-left">
-          <span>SIGAS-RT Web Digital Twin — MOCK DEMO</span>
+          <span>SIGAS-RT Web Digital Twin — {matlabMode ? 'MATLAB STREAM' : 'MOCK DEMO'}</span>
         </div>
         <div className="footer-right">
           <span>Renderer: WebGPU/WebGL2</span>
