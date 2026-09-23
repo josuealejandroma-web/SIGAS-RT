@@ -18,19 +18,19 @@ export const CAMERA_PRESETS: CameraPreset[] = [
     name: 'COCINA',
     position: [-3, 2.5, 4],
     rotation: [-15, -90, 0],
-    description: 'Zona cocina - Sensor GS1',
+    description: 'Cocina sin paredes - Sensor GS1',
   },
   {
     name: 'LIVING',
     position: [4, 2.5, -3],
     rotation: [-15, 0, 0],
-    description: 'Sala de estar - Sensor GS3',
+    description: 'Living sin paredes - Sensor GS3',
   },
   {
     name: 'AREA_TECNICA',
     position: [-4, 2.5, -4],
     rotation: [-15, 135, 0],
-    description: 'Área técnica - Sensor GS2, Válvula VT',
+    description: 'Área técnica sin paredes - GS2, VT',
   },
   {
     name: 'MANIFOLD_MEDIDOR',
@@ -42,13 +42,13 @@ export const CAMERA_PRESETS: CameraPreset[] = [
     name: 'VISTA_SUPERIOR',
     position: [0, 15, 0],
     rotation: [-90, 0, 0],
-    description: 'Planta superior - XRAY recomendado',
+    description: 'Desde arriba - Activa XRAY',
   },
   {
     name: 'XRAY',
     position: [0, 10, 0],
     rotation: [-75, 45, 0],
-    description: 'Vista XRAY - Tuberías internas',
+    description: 'Activa XRAY - Tuberías internas',
   },
 ];
 

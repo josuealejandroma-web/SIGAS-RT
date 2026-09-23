@@ -1,9 +1,11 @@
 import { useDigitalTwinStore, selectLatestFrame, selectConnectionStatus, selectCurrentSource, selectSystemState, selectEventType, selectAffectedZoneMask, selectGasData, selectPressureData, selectFlowData, selectValveData, selectBuzzer, selectGreenLed, selectRedLed, selectPerformanceMode, selectFPS, selectFrameTime } from '../state/store';
 import { SYSTEM_STATE_COLORS, SYSTEM_STATE_LABELS, EVENT_TYPE_LABELS, CONNECTION_STATUS_LABELS, SOURCE_LABELS, VALVE_STATE_LABELS } from '../scene/types';
 import { getZoneName } from '../telemetry';
+import { PHASE_LABELS } from '../bridge/protocol';
 import { useMemo } from 'react';
 
 export function Dashboard() {
+  const matlab = useDigitalTwinStore(s => s.matlab);
   const latestFrame = useDigitalTwinStore(selectLatestFrame);
   const connectionStatus = useDigitalTwinStore(selectConnectionStatus);
   const currentSource = useDigitalTwinStore(selectCurrentSource);
@@ -24,7 +26,7 @@ export function Dashboard() {
   const systemStateColor = useMemo(() => systemState ? SYSTEM_STATE_COLORS[systemState] : '#666', [systemState]);
   const systemStateLabel = useMemo(() => systemState ? SYSTEM_STATE_LABELS[systemState] : 'UNKNOWN', [systemState]);
   const eventLabel = useMemo(() => EVENT_TYPE_LABELS[eventType] || eventType, [eventType]);
-  const connectionLabel = useMemo(() => CONNECTION_STATUS_LABELS[connectionStatus], [connectionStatus]);
+  const connectionLabel = currentSource === 'MATLAB_SIM' ? `${matlab.connected ? 'Sesión conectada · ' : ''}${PHASE_LABELS[matlab.phase]}` : CONNECTION_STATUS_LABELS[connectionStatus];
   const sourceLabel = useMemo(() => SOURCE_LABELS[currentSource] || currentSource, [currentSource]);
   const affectedZoneLabel = useMemo(() => getZoneName(affectedZoneMask), [affectedZoneMask]);
 
@@ -127,12 +129,12 @@ export function Dashboard() {
       </div>
 
       <div className="dashboard-section">
-        <h3>FLOW (L/min)</h3>
+        <h3>FLOW ({latestFrame.flowUnit ?? (latestFrame.source === 'MATLAB_SIM' ? 'kg/s' : 'L/min')})</h3>
         <div className="sensor-grid">
           {flowData && Object.entries(flowData).map(([name, value]) => (
             <div key={name} className="sensor-card flow">
               <span className="sensor-name">{name.toUpperCase()}</span>
-              <span className="sensor-value mono">{value.toFixed(2)}</span>
+              <span className="sensor-value mono">{value.toPrecision(3)}</span>
             </div>
           ))}
         </div>
@@ -238,8 +240,8 @@ function getValveDelta(valve: string, pressure: { P0: number; P1: number; PK: nu
 function PressureBar({ value, min, max }: { value: number; min: number; max: number }) {
   const percent = Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
   let color = '#00cc66';
-  if (value < min + (max - min) * 0.3) color = '#ff3333';
-  else if (value < min + (max - min) * 0.6) color = '#ffaa00';
+  if (value < 12 || value > 40) color = '#ff3333';
+  else if (value > 30) color = '#ffaa00';
 
   return (
     <div className="pressure-bar">

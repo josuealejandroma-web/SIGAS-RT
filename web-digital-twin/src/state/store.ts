@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
+import { OFFLINE_STATUS, type MatlabStatus } from '../bridge/protocol';
 import {
   type ValidatedTelemetry,
   type TelemetryFrameV2,
@@ -12,6 +13,8 @@ import {
 } from '../telemetry';
 
 interface DigitalTwinState {
+  matlab: MatlabStatus;
+  setMatlabStatus: (status: MatlabStatus) => void;
   // Telemetry
   latestFrame: ValidatedTelemetry | null;
   previousFrame: ValidatedTelemetry | null;
@@ -61,15 +64,16 @@ interface DigitalTwinState {
 }
 
 const initialState: Omit<DigitalTwinState, 
-  'setTelemetryFrame' | 'setSource' | 'updateConnectionStatus' | 
+  'setMatlabStatus' | 'setTelemetryFrame' | 'setSource' | 'updateConnectionStatus' |
   'setReplayFrames' | 'setReplaying' | 'setReplaySpeed' | 'setReplayIndex' | 
   'tickReplay' | 'setPerformanceMode' | 'updatePerformanceMetrics' | 
   'selectObject' | 'setActiveView' | 'setActiveCameraPreset' | 'toggleDevPanel' | 'reset'
 > = {
+  matlab: OFFLINE_STATUS,
   latestFrame: null,
   previousFrame: null,
   frameHistory: [],
-  maxHistoryLength: 1800,
+  maxHistoryLength: 12000,
   lastValidFrameTime: 0,
   connectionStatus: 'DISCONNECTED',
   currentSource: 'MOCK_SIM',
@@ -89,18 +93,23 @@ const initialState: Omit<DigitalTwinState,
 export const useDigitalTwinStore = create<DigitalTwinState>()(
   subscribeWithSelector((set, get) => ({
     ...initialState,
+    setMatlabStatus: (matlab) => {
+      const changedRun = matlab.runId && matlab.runId !== get().matlab.runId;
+      set(changedRun ? { matlab, latestFrame: null, previousFrame: null, frameHistory: [], lastValidFrameTime: 0, connectionStatus: 'DISCONNECTED' } : { matlab });
+    },
 
     setTelemetryFrame: (frame) => {
       const { latestFrame, frameHistory, maxHistoryLength } = get();
-      const newHistory = [...frameHistory];
-      if (latestFrame) {
+      const sameRun = latestFrame?.runId === frame.runId;
+      const newHistory = sameRun ? [...frameHistory] : [];
+      if (latestFrame && sameRun) {
         newHistory.push(latestFrame);
         if (newHistory.length > maxHistoryLength) {
           newHistory.shift();
         }
       }
       set({
-        previousFrame: latestFrame,
+        previousFrame: sameRun ? latestFrame : null,
         latestFrame: frame,
         frameHistory: newHistory,
         lastValidFrameTime: frame._receivedAt,
@@ -112,7 +121,7 @@ export const useDigitalTwinStore = create<DigitalTwinState>()(
 
     updateConnectionStatus: (now) => {
       const { lastValidFrameTime } = get();
-      set({ connectionStatus: getConnectionStatus(lastValidFrameTime, now) });
+      set({ connectionStatus: get().latestFrame ? getConnectionStatus(lastValidFrameTime, now) : 'DISCONNECTED' });
     },
 
     setReplayFrames: (frames) => set({ replayFrames: frames, replayIndex: 0 }),
@@ -148,9 +157,23 @@ export const useDigitalTwinStore = create<DigitalTwinState>()(
 
     selectObject: (objectId) => set({ selectedObject: objectId }),
 
-    setActiveView: (view) => set({ activeView: view }),
+    setActiveView: (view) => set((state) => ({
+      activeView: view,
+      // Returning to the exterior must not leave the camera inside the house.
+      activeCameraPreset: view === 'CASA' ? 'EXTERIOR'
+        : !state.activeCameraPreset || state.activeCameraPreset === 'EXTERIOR' ? 'XRAY'
+        : state.activeCameraPreset,
+    })),
 
-    setActiveCameraPreset: (preset) => set({ activeCameraPreset: preset }),
+    setActiveCameraPreset: (preset) => set((state) => ({
+      activeCameraPreset: preset,
+      // Interior presets need a cutaway, even when selected from CASA.
+      // Keep pressure/safety/pipe inspection when moving between room cameras.
+      activeView: preset === 'EXTERIOR' ? 'CASA'
+        : preset === 'XRAY' || preset === 'VISTA_SUPERIOR' ? 'XRAY'
+        : preset && state.activeView === 'CASA' ? 'XRAY'
+        : state.activeView,
+    })),
 
     toggleDevPanel: () => set((s) => ({ showDevPanel: !s.showDevPanel })),
 

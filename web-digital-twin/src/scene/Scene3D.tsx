@@ -1,376 +1,216 @@
-import { Application, Container, Entity } from '@playcanvas/react';
-import { Camera, Script, Light } from '@playcanvas/react/components';
-import { useApp, useModel } from '@playcanvas/react/hooks';
-import { TONEMAP_ACES2 } from 'playcanvas';
-import { CameraControls } from 'playcanvas/scripts/esm/camera-controls.mjs';
-import { ProceduralSky } from 'playcanvas/scripts/esm/sky/procedural-sky.mjs';
-import { useEffect, useRef, useMemo } from 'react';
-import type { CameraPreset, SceneObjectRefs, PerformanceMode } from './types';
-import { CAMERA_PRESETS } from './types';
-import { useDigitalTwinStore, selectActiveView, selectActiveCameraPreset, selectPerformanceMode } from '../state/store';
-
-const MODEL_URL = '/models/sigas_house_web.glb';
+import { useEffect, useRef, useState } from 'react';
+import * as pc from 'playcanvas';
+import { useDigitalTwinStore } from '../state/store';
+import type { TelemetryFrameV2 } from '../telemetry';
+import { NETWORK, INSTRUMENTS, CAMERA_VIEWS, type Point } from './topology';
 
 export interface Scene3DProps {
-  onObjectClick?: (objectName: string, entity: any) => void;
-  onSceneReady?: (app: any) => void;
+  onObjectClick?: (objectName: string, entity?: unknown) => void;
+  onSceneReady?: (app: pc.Application) => void;
 }
+const MODEL_URL = '/models/sigas_house_original.glb';
+const V1_GAS = /^SIGAS_(MainPipe|Pipe_|MainValve|AutoValve|MQ2_|GasFlow_|LeakPoint_)/;
+const SHELL = /Wall|Roof|Dormer|Facade|Window|Door|Upper_Slab|UpperHall|Bedroom|MasterBed|Balcony|Terrace|Stairs|Upper_Bath/;
 
-// Wrapper for Light with color prop support
-const LightWithColor = Light as any;
-
-export function Scene3D({ onObjectClick, onSceneReady }: Scene3DProps) {
-  const performanceMode = useDigitalTwinStore(selectPerformanceMode);
-
-  return (
-    <Application
-      canvasId="sigas-canvas"
-      autoRender={true}
-      graphicsDeviceOptions={{
-        powerPreference: 'high-performance',
-        antialias: performanceMode !== 'LOW',
-        alpha: false,
-        preserveDrawingBuffer: false,
-      }}
-    >
-      <SceneContent
-        onObjectClick={onObjectClick}
-        onSceneReady={onSceneReady}
-        performanceMode={performanceMode}
-      />
-    </Application>
-  );
-}
-
-type SceneContentProps = Scene3DProps & {
-  performanceMode: PerformanceMode;
-};
-
-function SceneContent({ onObjectClick, onSceneReady, performanceMode }: SceneContentProps) {
-  const app = useApp();
-  const { asset, loading, error } = useModel(MODEL_URL);
-  const activeView = useDigitalTwinStore(selectActiveView);
-  const activeCameraPreset = useDigitalTwinStore(selectActiveCameraPreset);
-  const containerRef = useRef<any>(null);
-  const cameraEntityRef = useRef<any>(null);
-  const presetTransitionRef = useRef<{ from: CameraPreset; to: CameraPreset; startTime: number; duration: number } | null>(null);
-
-  const cameraPreset = useMemo(() => {
-    if (activeCameraPreset) {
-      return CAMERA_PRESETS.find(p => p.name === activeCameraPreset);
-    }
-    return CAMERA_PRESETS.find(p => p.name === 'EXTERIOR');
-  }, [activeCameraPreset]);
-
+export function Scene3D({ onObjectClick }: Scene3DProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const labelRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState('');
+  const [loaded, setLoaded] = useState(false);
+  const frame = useDigitalTwinStore(s => s.latestFrame);
+  const view = useDigitalTwinStore(s => s.activeView);
+  const freshness = useDigitalTwinStore(s => s.connectionStatus);
+  const callback = useRef(onObjectClick);
+  callback.current = onObjectClick;
   useEffect(() => {
-    if (onSceneReady) {
-      onSceneReady(app);
+    const canvas = canvasRef.current!;
+    let disposed = false;
+    let house: pc.Entity | undefined;
+    let app: pc.Application;
+    try {
+      app = new pc.Application(canvas, { graphicsDeviceOptions: { antialias: true, alpha: false } });
+    } catch (e) { setError(String(e)); return; }
+    // Application defaults to RESOLUTION_FIXED (the canvas starts at 300x150).
+    // Resizing its CSS alone stretches that small buffer across the whole panel.
+    // AUTO keeps the drawing buffer and camera aspect matched to the visible area.
+    const applyResolution = () => {
+      const mode = useDigitalTwinStore.getState().performanceMode;
+      app.graphicsDevice.maxPixelRatio = mode === 'LOW' ? 1 : mode === 'MEDIUM' ? 1.5 : mode === 'HIGH' ? 3 : 2;
+      app.setCanvasResolution(pc.RESOLUTION_AUTO);
+    };
+    applyResolution();
+    app.scene.ambientLight = new pc.Color(0.22, 0.24, 0.28);
+    const camera = new pc.Entity('InspectionCamera');
+    camera.addComponent('camera', { clearColor: new pc.Color(0.065, 0.09, 0.14), nearClip: 0.05, farClip: 150, fov: 48 });
+    app.root.addChild(camera);
+    const sun = new pc.Entity('Sun');
+    sun.addComponent('light', { type: 'directional', intensity: 0.9, castShadows: true, shadowResolution: 2048, shadowDistance: 40, normalOffsetBias: 0.04 });
+    sun.setLocalEulerAngles(45, -35, 0);
+    app.root.addChild(sun);
+    const fill = new pc.Entity('Fill');
+    fill.addComponent('light', { type: 'directional', intensity: 0.3, color: new pc.Color(0.66, 0.8, 1) });
+    fill.setLocalEulerAngles(45, 140, 0);
+    app.root.addChild(fill);
+    const materials: pc.StandardMaterial[] = [];
+    const material = (hex: string) => {
+      const m = new pc.StandardMaterial();
+      m.diffuse.fromString(hex); m.gloss = 0.4; m.update(); materials.push(m); return m;
+    };
+    const pipes: { material: pc.StandardMaterial; node: keyof TelemetryFrameV2['pressure'] }[] = [];
+    const instruments = new Map<string, { material: pc.StandardMaterial; handle?: pc.Entity }>();
+    const primitive = (name: string, type: string, position: Point, scale: Point, mat: pc.StandardMaterial) => {
+      const e = new pc.Entity(name);
+      e.addComponent('render', { type, material: mat, castShadows: true });
+      e.setPosition(...position); e.setLocalScale(...scale); app.root.addChild(e); return e;
+    };
+    for (const branch of NETWORK) {
+      const mat = material('#dfad55');
+      for (let i = 1; i < branch.points.length; i++) {
+        const a = new pc.Vec3(...branch.points[i - 1]), b = new pc.Vec3(...branch.points[i]);
+        const center = a.clone().add(b).mulScalar(0.5);
+        const e = primitive(branch.id + '_' + i, 'cylinder', [center.x, center.y, center.z], [0.07, a.distance(b), 0.07], mat);
+        e.lookAt(b); e.rotateLocal(90, 0, 0);
+        pipes.push({ material: mat, node: branch.pressure });
+        primitive(branch.id + '_joint_' + i, 'sphere', branch.points[i], [0.08, 0.08, 0.08], mat);
+      }
     }
-  }, [app, onSceneReady]);
-
-  const handleEntityClick = (entity: any, event: Event) => {
-    if (onObjectClick) {
-      onObjectClick(entity.name, entity);
+    for (const sensor of INSTRUMENTS) {
+      const mat = material('#7f8d9b');
+      const valve = sensor.kind === 'valve';
+      const e = primitive(sensor.id, valve ? 'cylinder' : 'box', sensor.position, valve ? [0.19, 0.25, 0.19] : [0.16, 0.2, 0.11], mat);
+      let handle: pc.Entity | undefined;
+      if (valve) {
+        handle = new pc.Entity(sensor.id + '_handle');
+        handle.addComponent('render', { type: 'box', material: mat });
+        e.addChild(handle); handle.setLocalPosition(0, 0.7, 0); handle.setLocalScale(2.4, 0.18, 0.4);
+      }
+      instruments.set(sensor.id, { material: mat, handle });
     }
-  };
-
-  const applyViewSettings = (container: any) => {
-    if (!container) return;
-
-    container.traverse((entity: any) => {
-      const name = entity.name;
-
-      if (activeView === 'XRAY') {
-        if (isWallOrRoof(name)) {
-          setEntityOpacity(entity, 0.15);
-          entity.render?.meshInstances?.forEach((mi: any) => {
-            if (mi.material) {
-              mi.material.depthTest = false;
-              mi.material.blendType = 1;
-            }
-          });
+    let yaw = 38, pitch = 29, distance = 22, target = new pc.Vec3(0, 2.4, 0);
+    const positionCamera = () => {
+      const a = yaw * Math.PI / 180, p = pitch * Math.PI / 180;
+      camera.setPosition(target.x + distance * Math.cos(p) * Math.sin(a), target.y + distance * Math.sin(p), target.z + distance * Math.cos(p) * Math.cos(a));
+      camera.lookAt(target);
+    };
+    const preset = () => {
+      const state = useDigitalTwinStore.getState();
+      const name = state.activeCameraPreset ?? (state.activeView === 'CASA' ? 'EXTERIOR' : 'XRAY');
+      const v = CAMERA_VIEWS[name] ?? CAMERA_VIEWS.EXTERIOR;
+      target = new pc.Vec3(...v.target); yaw = v.yaw; pitch = v.pitch; distance = v.distance; positionCamera();
+    };
+    let pointer: { x: number; y: number } | null = null;
+    const down = (e: PointerEvent) => { pointer = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); };
+    const move = (e: PointerEvent) => {
+      if (!pointer) return;
+      yaw -= (e.clientX - pointer.x) * 0.3; pitch = Math.max(8, Math.min(85, pitch + (e.clientY - pointer.y) * 0.3));
+      pointer = { x: e.clientX, y: e.clientY }; positionCamera();
+    };
+    const up = () => { pointer = null; };
+    const wheel = (e: WheelEvent) => { e.preventDefault(); distance = Math.max(1.5, Math.min(40, distance * Math.exp(e.deltaY * 0.001))); positionCamera(); };
+    canvas.addEventListener('pointerdown', down); canvas.addEventListener('pointermove', move); canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up); canvas.addEventListener('wheel', wheel, { passive: false });
+    const resize = new ResizeObserver(() => { const r = canvas.parentElement!.getBoundingClientRect(); app.resizeCanvas(Math.max(1, r.width), Math.max(1, r.height)); });
+    resize.observe(canvas.parentElement!);
+    const applyTelemetry = () => {
+      const state = useDigitalTwinStore.getState(), f = state.latestFrame;
+      for (const sensor of INSTRUMENTS) {
+        const obj = instruments.get(sensor.id)!;
+        let color = '#7f8d9b';
+        if (f) {
+          if (sensor.kind === 'valve') {
+            const opened = f.valves[sensor.key as keyof typeof f.valves] === 'OPEN';
+            color = opened ? '#29cf92' : '#fa5252'; obj.handle?.setLocalEulerAngles(0, opened ? 0 : 90, 0);
+          } else if (sensor.kind === 'gas') {
+            const gas = f.gas[sensor.key as keyof typeof f.gas];
+            color = !gas.valid ? '#c990ff' : gas.level === 'CRITICAL' ? '#fa5252' : gas.level === 'WARNING' ? '#ffbd4a' : '#29cf92';
+          } else color = '#50bfff';
         }
-      } else if (activeView === 'TUBERIAS') {
-        if (isPipe(name)) {
-          setEntityOpacity(entity, 1);
-          setEntityEmissive(entity, 0.3);
-        } else if (isWallOrRoof(name)) {
-          setEntityOpacity(entity, 0.3);
-        } else {
-          setEntityOpacity(entity, 0.5);
+        obj.material.diffuse.fromString(color); obj.material.update();
+      }
+      for (const pipe of pipes) {
+        if (f && state.activeView === 'PRESION') {
+          const p = Math.max(0, Math.min(1, f.pressure[pipe.node] / 30));
+          pipe.material.diffuse.set(p, 0.35 + 0.4 * (1 - Math.abs(p - 0.5) * 2), 1 - p);
+        } else pipe.material.diffuse.fromString('#dfad55');
+        pipe.material.update();
+      }
+      if (house && f) {
+        for (const [name, on] of [['SIGAS_LedGreen', f.greenLed], ['SIGAS_LedRed', f.redLed], ['SIGAS_Buzzer', f.buzzer]] as const) {
+          (house.findByName(name) as pc.Entity | null)?.render?.meshInstances.forEach(mi => { const m = mi.material as pc.StandardMaterial; m.emissive.copy(m.diffuse).mulScalar(on ? 1 : 0); m.update(); });
         }
-      } else if (activeView === 'PRESION') {
-        if (isPipe(name)) {
-          setEntityOpacity(entity, 1);
-        } else if (isWallOrRoof(name)) {
-          setEntityOpacity(entity, 0.4);
-        } else {
-          setEntityOpacity(entity, 0.6);
+      }
+    };
+    const applyView = () => {
+      const state = useDigitalTwinStore.getState();
+      if (house) for (const render of house.findComponents('render') as pc.RenderComponent[]) {
+        const name = render.entity.name, hidden = /Helper/.test(name) || V1_GAS.test(name);
+        render.enabled = !hidden && (state.activeView === 'CASA' || !SHELL.test(name));
+        for (const mesh of render.meshInstances) {
+          const m = mesh.material as pc.StandardMaterial;
+          m.opacity = state.activeView === 'TUBERIAS' ? 0.15 : state.activeView === 'XRAY' ? 0.3 : 1;
+          m.blendType = m.opacity < 1 ? pc.BLEND_NORMAL : pc.BLEND_NONE;
+          m.depthWrite = m.opacity === 1; m.update();
         }
-      } else if (activeView === 'SEGURIDAD') {
-        if (isSensorOrValve(name)) {
-          setEntityOpacity(entity, 1);
-          setEntityEmissive(entity, 0.2);
-        } else if (isWallOrRoof(name)) {
-          setEntityOpacity(entity, 0.4);
-        } else {
-          setEntityOpacity(entity, 0.5);
+      }
+      sun.light!.castShadows = state.performanceMode !== 'LOW'; preset(); applyTelemetry();
+    };
+    app.assets.loadFromUrl(MODEL_URL, 'container', (err, asset) => {
+      if (disposed) return;
+      if (err || !asset) { setError('No se pudo cargar la casa original: ' + String(err)); return; }
+      house = (asset.resource as pc.ContainerResource).instantiateRenderEntity();
+      app.root.addChild(house!);
+      for (const render of house!.findComponents('render') as pc.RenderComponent[]) {
+        render.meshInstances.forEach(mi => { const m = (mi.material as pc.StandardMaterial).clone(); materials.push(m); mi.material = m; });
+      }
+      applyView(); setLoaded(true);
+    });
+    const unsubView = useDigitalTwinStore.subscribe(s => s.activeView + ':' + s.activeCameraPreset, applyView);
+    const unsubQuality = useDigitalTwinStore.subscribe(s => s.performanceMode, () => {
+      applyResolution();
+      sun.light!.castShadows = useDigitalTwinStore.getState().performanceMode !== 'LOW';
+    });
+    const unsubFrame = useDigitalTwinStore.subscribe(s => s.latestFrame, applyTelemetry);
+    const screen = new pc.Vec3();
+    let elapsed = 0, frames = 0;
+    app.on('update', (dt: number) => {
+      elapsed += dt; frames++;
+      if (elapsed > 1) { useDigitalTwinStore.getState().updatePerformanceMetrics(Math.round(frames / elapsed), elapsed * 1000 / frames); elapsed = 0; frames = 0; }
+      const boxes: {x:number;y:number;w:number;h:number}[] = [];
+      for (const instrument of INSTRUMENTS) {
+        const el = labelRef.current?.querySelector<HTMLElement>('[data-instrument="' + instrument.id + '"]');
+        if (!el) continue;
+        camera.camera!.worldToScreen(new pc.Vec3(...instrument.position), screen);
+        const w = canvas.clientWidth, h = canvas.clientHeight;
+        el.style.display = screen.z > 0 && screen.x >= 0 && screen.x < w && screen.y > 0 && screen.y < h ? '' : 'none';
+        const width = el.offsetWidth, height = el.offsetHeight;
+        const x = Math.max(width / 2 + 3, Math.min(w - width / 2 - 3, screen.x));
+        let y = Math.max(88, Math.min(h - 78, screen.y));
+        for (let attempt = 0; attempt < 12; attempt++) {
+          const collision = boxes.some(b => Math.abs(x - b.x) < (width + b.w) / 2 + 3 && Math.abs(y - b.y) < (height + b.h) / 2 + 3);
+          if (!collision) break;
+          y -= height + 4;
+          if (y < 88) y = Math.min(h - 78, screen.y + (attempt + 1) * (height + 4));
         }
-      } else {
-        setEntityOpacity(entity, 1);
-        setEntityEmissive(entity, 0);
-        entity.render?.meshInstances?.forEach((mi: any) => {
-          if (mi.material) {
-            mi.material.depthTest = true;
-          }
-        });
+        y = Math.max(88, Math.min(h - 78, y));
+        boxes.push({x,y,w:width,h:height});
+        el.style.left = x + 'px'; el.style.top = y + 'px';
       }
     });
-  };
-
-  useEffect(() => {
-    if (containerRef.current) {
-      applyViewSettings(containerRef.current);
-    }
-  }, [activeView]);
-
-  useEffect(() => {
-    if (!asset || !cameraEntityRef.current || !cameraPreset) return;
-
-    const camera = cameraEntityRef.current;
-    camera.setPosition(...cameraPreset.position);
-    camera.lookAt(0, 2.5, 0);
-  }, [asset, cameraPreset]);
-
-  const animateCameraToPreset = (preset: CameraPreset) => {
-    if (!cameraEntityRef.current) return;
-    const currentPreset = cameraPreset;
-    if (!currentPreset) return;
-
-    presetTransitionRef.current = {
-      from: currentPreset,
-      to: preset,
-      startTime: performance.now(),
-      duration: 800,
+    preset(); app.start();
+    return () => {
+      disposed = true; resize.disconnect(); unsubView(); unsubQuality(); unsubFrame();
+      canvas.removeEventListener('pointerdown', down); canvas.removeEventListener('pointermove', move); canvas.removeEventListener('pointerup', up); canvas.removeEventListener('pointercancel', up); canvas.removeEventListener('wheel', wheel);
+      app.destroy(); materials.forEach(m => m.destroy());
     };
-  };
-
-  useEffect(() => {
-    if (!cameraEntityRef.current || !presetTransitionRef.current) return;
-
-    const transition = presetTransitionRef.current;
-    const elapsed = performance.now() - transition.startTime;
-    const t = Math.min(1, elapsed / transition.duration);
-    const eased = 1 - Math.pow(1 - t, 3);
-
-    const pos = transition.from.position.map((v: number, i: number) => v + (transition.to.position[i] - v) * eased);
-    const rot = transition.from.rotation.map((v: number, i: number) => v + (transition.to.rotation[i] - v) * eased);
-
-    cameraEntityRef.current.setLocalPosition(pos[0], pos[1], pos[2]);
-    cameraEntityRef.current.setLocalEulerAngles(rot[0], rot[1], rot[2]);
-
-    if (t >= 1) {
-      presetTransitionRef.current = null;
-    }
-  });
-
-  if (error) {
-    return (
-      <div style={{ padding: 20, color: '#ff6b6b', textAlign: 'center' }}>
-        Failed to load 3D model: {String(error)}
-      </div>
-    );
-  }
-
-  if (loading || !asset) {
-    return (
-      <div style={{ padding: 20, color: '#888', textAlign: 'center' }}>
-        Loading 3D model...
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <Entity name="sky">
-        <Script script={ProceduralSky} luminance={0.15} />
-      </Entity>
-
-      <Entity name="camera" ref={cameraEntityRef} position={cameraPreset?.position ?? [8, 5, 10]} rotation={cameraPreset?.rotation ?? [-20, 45, 0]}>
-        <Camera
-          toneMapping={TONEMAP_ACES2}
-          exposure={1}
-          fov={60}
-          nearClip={0.1}
-          farClip={100}
-          clearColor={0x1a1a2e}
-        />
-        <Script script={CameraControls} sceneSize={15} distance={15} minDistance={2} maxDistance={50} />
-      </Entity>
-
-      <Entity name="sun" rotation={[-45, 30, 0]}>
-        <LightWithColor
-          type="directional"
-          color="#fff8e7"
-          intensity={2.5}
-          castShadows={performanceMode === 'HIGH'}
-          shadowDistance={30}
-          shadowResolution={performanceMode === 'HIGH' ? 2048 : 1024}
-          shadowBias={0.005}
-          normalOffsetBias={0.002}
-        />
-      </Entity>
-
-      <Entity name="fill-light" rotation={[45, -30, 0]}>
-        <LightWithColor
-          type="directional"
-          color="#88aaff"
-          intensity={0.5}
-          castShadows={false}
-        />
-      </Entity>
-
-      <Container
-        ref={containerRef}
-        asset={asset}
-        onClick={handleEntityClick}
-        onLoad={(container: any) => applyViewSettings(container)}
-      />
-    </>
-  );
-}
-
-function isWallOrRoof(name: string): boolean {
-  const lower = name.toLowerCase();
-  return lower.includes('wall') ||
-    lower.includes('roof') ||
-    lower.includes('ceiling') ||
-    lower.includes('floor') ||
-    lower.includes('partition') ||
-    lower.includes('exterior') ||
-    lower.includes('dormer');
-}
-
-function isPipe(name: string): boolean {
-  const lower = name.toLowerCase();
-  return lower.includes('pipe') ||
-    lower.includes('tube') ||
-    lower.includes('mainpipe') ||
-    lower.includes('branch') ||
-    lower.includes('valve');
-}
-
-function isSensorOrValve(name: string): boolean {
-  const lower = name.toLowerCase();
-  return lower.includes('mq2') ||
-    lower.includes('sensor') ||
-    lower.includes('valve') ||
-    lower.includes('led') ||
-    lower.includes('buzzer') ||
-    lower.includes('auto');
-}
-
-function setEntityOpacity(entity: any, opacity: number) {
-  entity.render?.meshInstances?.forEach((mi: any) => {
-    if (mi.material) {
-      mi.material.opacity = opacity;
-      mi.material.blendType = opacity < 1 ? 1 : 0;
-      mi.material.depthWrite = opacity >= 1;
-      mi.material.update();
-    }
-  });
-}
-
-function setEntityEmissive(entity: any, intensity: number) {
-  entity.render?.meshInstances?.forEach((mi: any) => {
-    if (mi.material) {
-      mi.material.emissive.set(intensity, intensity, intensity);
-      mi.material.update();
-    }
-  });
-}
-
-export function useScene3D() {
-  const containerRef = useRef<any>(null);
-  const cameraRef = useRef<any>(null);
-  const appRef = useRef<any>(null);
-
-  const setContainerRef = (container: any) => {
-    containerRef.current = container;
-  };
-
-  const setCameraRef = (entity: any) => {
-    cameraRef.current = entity;
-  };
-
-  const setAppRef = (app: any) => {
-    appRef.current = app;
-  };
-
-  const findEntityByName = (name: string): any => {
-    if (!containerRef.current) return null;
-    let found: any = null;
-    containerRef.current.traverse((entity: any) => {
-      if (entity.name === name) found = entity;
-    });
-    return found;
-  };
-
-  const findEntitiesByPattern = (pattern: string): any[] => {
-    if (!containerRef.current) return [];
-    const regex = new RegExp(pattern, 'i');
-    const found: any[] = [];
-    containerRef.current.traverse((entity: any) => {
-      if (regex.test(entity.name)) found.push(entity);
-    });
-    return found;
-  };
-
-  const getObjectRefs = (): SceneObjectRefs => {
-    const refs: SceneObjectRefs = {
-      gasSensors: {},
-      pressureSensors: {},
-      valves: {},
-      pipes: {},
-      indicators: {},
-    };
-
-    if (!containerRef.current) return refs;
-
-    containerRef.current.traverse((entity: any) => {
-      const name = entity.name;
-
-      if (name.startsWith('SIGAS_MQ2') || name.startsWith('GS')) {
-        const zone = name.includes('Z1') || name.includes('GS1') ? 'Z1' :
-          name.includes('Z2') || name.includes('GS2') ? 'Z2' : 'Z3';
-        refs.gasSensors[zone] = entity;
-      } else if (name.startsWith('SIGAS_P') || name.startsWith('P')) {
-        const zone = name.includes('P0') ? 'P0' :
-          name.includes('P1') ? 'P1' :
-            name.includes('PK') ? 'PK' :
-              name.includes('PL') ? 'PL' : 'PT';
-        refs.pressureSensors[zone] = entity;
-      } else if (name.startsWith('SIGAS_V') || name.startsWith('VM') || name.startsWith('VK') || name.startsWith('VL') || name.startsWith('VT')) {
-        const valve = name.includes('VM') ? 'VM' :
-          name.includes('VK') ? 'VK' :
-            name.includes('VL') ? 'VL' : 'VT';
-        refs.valves[valve] = entity;
-      } else if (name.includes('Pipe') || name.includes('pipe') || name.includes('MainPipe')) {
-        refs.pipes[name] = entity;
-      } else if (name.includes('Led') || name.includes('LED') || name.includes('Buzzer') || name.includes('buzzer')) {
-        refs.indicators[name] = entity;
-      }
-    });
-
-    return refs;
-  };
-
-  return {
-    containerRef: setContainerRef,
-    cameraRef: setCameraRef,
-    appRef: setAppRef,
-    findEntityByName,
-    findEntitiesByPattern,
-    getObjectRefs,
-  };
+  }, []);
+  return <>
+    <canvas ref={canvasRef} className="pc-app" aria-label="Casa original y red de gas V2, escena 3D" />
+    <div className="scene-caption">{error || (!loaded ? 'Cargando casa original…' : view + ' · Casa original / instrumentación V2')}<small>Arrastrar: girar · Rueda: acercar · Etiquetas: inspeccionar</small></div>
+    <div ref={labelRef} className="scene-labels">
+      {view !== 'CASA' && INSTRUMENTS.filter(s => view === 'PRESION' ? s.kind === 'pressure' : view === 'SEGURIDAD' ? s.kind === 'gas' : view === 'TUBERIAS' ? s.kind === 'valve' : s.kind !== 'pressure').map(s => <button key={s.id} data-instrument={s.id} onClick={() => callback.current?.(s.id)}>
+        {s.label}{frame && s.kind === 'pressure' ? ' ' + frame.pressure[s.key as keyof typeof frame.pressure].toFixed(2) + ' mbar' : ''}
+        {frame && s.kind === 'valve' ? ' ' + (frame.valves[s.key as keyof typeof frame.valves] === 'OPEN' ? 'ABIERTA' : 'CERRADA') : ''}
+      </button>)}
+    </div>
+    {view !== 'CASA' && <div className="scene-legend">{view === 'PRESION' ? 'Presión nodal · 0 mbar azul → 30 mbar rojo · ΔP incluye tubería' : 'Verde: normal/abierta · Rojo: alarma/cerrada · Violeta: sensor inválido'}<br />{!frame ? 'Esperando resultados · ' : freshness !== 'LIVE' ? 'Último resultado conservado · ' : ''}Diámetros ampliados para inspección. Sin difusión CFD.</div>}
+  </>;
 }

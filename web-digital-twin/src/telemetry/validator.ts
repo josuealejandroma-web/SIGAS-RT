@@ -80,6 +80,8 @@ export function validateTelemetryFrame(data: unknown): ValidatedTelemetry | null
   const d = data as Record<string, unknown>;
 
   if (d.schemaVersion !== 2) return null;
+  if (d.runId !== undefined && typeof d.runId !== 'string') return null;
+  if (d.flowUnit !== undefined && !['kg/s', 'L/min'].includes(String(d.flowUnit))) return null;
   if (!isValidSource(d.source)) return null;
   if (!isFiniteNumber(d.sequence)) return null;
   if (!isFiniteNumber(d.simTime)) return null;

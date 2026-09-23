@@ -7,6 +7,7 @@ arguments
 end
 
 mdl = "SIGAS_RT_System";
+load_system(mdl);
 ds = build_scenario_inputs(scenarioName, stopTime);
 
 in = Simulink.SimulationInput(mdl);

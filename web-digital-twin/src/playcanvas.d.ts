@@ -1,3 +1,2 @@
-declare module 'playcanvas' {
-  export const TONEMAP_ACES2: number;
-}
+// Preserve the official engine types.
+export {};

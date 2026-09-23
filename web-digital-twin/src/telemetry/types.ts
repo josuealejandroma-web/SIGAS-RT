@@ -46,6 +46,8 @@ export interface ValveData {
 }
 
 export interface TelemetryFrameV2 {
+  runId?: string;
+  flowUnit?: 'kg/s' | 'L/min';
   schemaVersion: 2;
   source: TelemetrySource;
   sequence: number;

@@ -1,95 +1,49 @@
 <#
 .SYNOPSIS
-    Inicia el gemelo digital web con telemetria MATLAB local y unidireccional.
+    Gemelo local. El puente mantiene una sesión MATLAB hasta que el usuario la cierre.
 #>
-
 param(
-    [string]$Scenario = "V2_NORMAL",
-    [double]$StopTime = 5,
-    [double]$PlaybackRate = 1,
+    [string]$Scenario = 'NORMAL',
+    [ValidateRange(1,60)][double]$StopTime = 8,
+    [ValidateRange(0.1,4)][double]$PlaybackRate = 1,
+    [switch]$KeepAlive,
     [switch]$SkipBrowser,
     [switch]$SkipMatlab
 )
-
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$webDir = Join-Path $repoRoot "web-digital-twin"
-$matlabScripts = Join-Path $repoRoot "matlab\scripts"
-$children = [System.Collections.Generic.List[System.Diagnostics.Process]]::new()
-
-function Start-ChildProcess {
-    param([string]$FilePath, [string[]]$Arguments, [string]$WorkingDirectory)
-    $process = Start-Process -FilePath $FilePath -ArgumentList $Arguments `
-        -WorkingDirectory $WorkingDirectory -WindowStyle Hidden -PassThru
-    $children.Add($process)
-    return $process
-}
-
-function Wait-TcpPort {
-    param([int]$Port, [int]$TimeoutSeconds = 30)
-    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
-    while ((Get-Date) -lt $deadline) {
-        try {
-            $client = [System.Net.Sockets.TcpClient]::new()
-            $client.Connect("127.0.0.1", $Port)
-            $client.Dispose()
-            return
-        } catch {
-            Start-Sleep -Milliseconds 250
-        }
+$webDir = Join-Path $repoRoot 'web-digital-twin'
+$nodePath = Join-Path $repoRoot 'tools\node\node.exe'
+if (-not (Test-Path -LiteralPath $nodePath)) { $nodePath = (Get-Command node -ErrorAction Stop).Source }
+if (-not (Test-Path -LiteralPath (Join-Path $webDir 'node_modules'))) { throw 'Instala dependencias con npm ci en web-digital-twin.' }
+foreach ($port in @(5173,45811)) {
+    if (Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue) {
+        throw "El puerto $port está ocupado. Cierra el lanzador anterior o usa la sesión ya abierta."
     }
-    throw "Timeout esperando el puerto TCP $Port"
 }
-
-if (-not (Test-Path (Join-Path $webDir "node_modules"))) {
-    Push-Location $webDir
-    try { & npm.cmd ci } finally { Pop-Location }
-    if ($LASTEXITCODE -ne 0) { throw "npm ci fallo" }
-}
-
-$env:BRIDGE_BIND_HOST = "127.0.0.1"
-$env:VITE_FORCE_SOURCE = "MATLAB_SIM"
-$env:VITE_WS_URL = "ws://127.0.0.1:45811"
-
+$env:VITE_FORCE_SOURCE = 'MATLAB_SIM'
+$env:VITE_WS_URL = 'ws://127.0.0.1:45811'
+$env:MATLAB_AUTOSTART = if ($SkipMatlab) { '0' } else { '1' }
+$env:MATLAB_INITIAL_SCENARIO = $Scenario -replace '^V2_', ''
+$env:MATLAB_STOP_TIME = $StopTime.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:MATLAB_PLAYBACK_RATE = $PlaybackRate.ToString([Globalization.CultureInfo]::InvariantCulture)
+# KeepAlive is accepted for compatibility; persistent sessions are now the default.
+$bridgeTask = $null
+$viteTask = $null
 try {
-    Write-Host "Iniciando bridge UDP 45810 -> WebSocket 45811..."
-    $bridge = Start-ChildProcess "npm.cmd" @("run", "bridge") $webDir
-    Wait-TcpPort 45811
-
-    Write-Host "Iniciando web en http://127.0.0.1:5173..."
-    $vite = Start-ChildProcess "npm.cmd" @("run", "dev", "--", "--host", "127.0.0.1") $webDir
-    Wait-TcpPort 5173
-
-    if (-not $SkipBrowser) {
-        Start-Process "http://127.0.0.1:5173"
-    }
-
-    if (-not $SkipMatlab) {
-        $matlab = Get-Command matlab -ErrorAction Stop
-        $escapedRoot = $repoRoot.Replace("'", "''")
-        $escapedScripts = $matlabScripts.Replace("'", "''")
-        $escapedScenario = $Scenario.Replace("'", "''")
-        $command = "cd('$escapedRoot'); addpath('$escapedScripts'); setup_project(); stream_simulation_to_web('$escapedScenario',$StopTime,$PlaybackRate);"
-        $batchArgument = '"' + $command + '"'
-        Write-Host "Iniciando MATLAB: $Scenario ($StopTime s, ${PlaybackRate}x)..."
-        $matlabProcess = Start-ChildProcess $matlab.Source @("-batch", $batchArgument) $repoRoot
-        $matlabProcess.WaitForExit()
-        if ($matlabProcess.ExitCode -ne 0) {
-            throw "MATLAB termino con codigo $($matlabProcess.ExitCode)"
-        }
-        Write-Host "Telemetria MATLAB completada correctamente."
-    } else {
-        Write-Host "Bridge y web listos; MATLAB omitido por -SkipMatlab."
-    }
-
-    Write-Host "Presiona Ctrl+C para cerrar bridge y web."
-    while (-not $bridge.HasExited -and -not $vite.HasExited) {
-        Start-Sleep -Seconds 1
-    }
+    $bridgeTask = Start-Process $nodePath -ArgumentList @('--import','./node_modules/tsx/dist/loader.mjs','src/bridge/server.ts') -WorkingDirectory $webDir -WindowStyle Hidden -PassThru
+    $viteTask = Start-Process $nodePath -ArgumentList @('node_modules/vite/bin/vite.js','--host','127.0.0.1','--strictPort') -WorkingDirectory $webDir -WindowStyle Hidden -PassThru
+    Write-Host 'Web: http://127.0.0.1:5173. MATLAB se inicia una sola vez; usa los botones para ejecutar escenarios.'
+    if (-not $SkipBrowser) { Start-Process 'http://127.0.0.1:5173' }
+    Write-Host 'Deja esta terminal abierta. Ctrl+C cierra los procesos de esta sesión.'
+    while (-not $bridgeTask.HasExited -and -not $viteTask.HasExited) { Start-Sleep -Seconds 1 }
 } finally {
-    foreach ($process in $children) {
-        if (-not $process.HasExited) {
-            Stop-Process -Id $process.Id -ErrorAction SilentlyContinue
-        }
+    # Stop only MATLAB children owned by this exact bridge process.
+    if ($bridgeTask) {
+        Get-CimInstance Win32_Process -Filter "ParentProcessId = $($bridgeTask.Id)" |
+            Where-Object { $_.Name -eq 'MATLAB.exe' } |
+            ForEach-Object { Stop-Process -Id $_.ProcessId -ErrorAction SilentlyContinue }
+        if (-not $bridgeTask.HasExited) { Stop-Process -Id $bridgeTask.Id -ErrorAction SilentlyContinue }
     }
+    if ($viteTask -and -not $viteTask.HasExited) { Stop-Process -Id $viteTask.Id -ErrorAction SilentlyContinue }
 }

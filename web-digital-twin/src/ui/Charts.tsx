@@ -48,6 +48,9 @@ const CHART_CONFIGS: ChartConfig[] = [
 ];
 
 export function LiveCharts() {
+  const latestFrame = useDigitalTwinStore(s => s.latestFrame);
+  const massFlow = latestFrame?.flowUnit === 'kg/s' || latestFrame?.source === 'MATLAB_SIM';
+  const configs = useMemo(() => CHART_CONFIGS.map(c => c.id === 'living_flow' && massFlow ? {...c, unit: 'kg/s', max: Math.max(0.001, ...useDigitalTwinStore.getState().frameHistory.map(f => Math.abs(f.flow.living))) * 1.1} : c), [massFlow, latestFrame?.runId]);
   const frameHistory = useDigitalTwinStore(selectFrameHistory);
   const canvasRefs = useRef<Record<string, HTMLCanvasElement>>({});
   const animationRef = useRef<number | null>(null);
@@ -56,14 +59,14 @@ export function LiveCharts() {
     const data: Record<string, ChartDataPoint[]> = {};
     const maxPoints = 180;
 
-    CHART_CONFIGS.forEach(config => {
+    configs.forEach(config => {
       data[config.id] = [];
     });
 
     const recentFrames = frameHistory.slice(-maxPoints);
     recentFrames.forEach(frame => {
       const time = frame.simTime;
-      CHART_CONFIGS.forEach(config => {
+      configs.forEach(config => {
         const value = config.extractor(frame);
         if (value !== null) {
           data[config.id].push({ time, value });
@@ -72,13 +75,13 @@ export function LiveCharts() {
     });
 
     return data;
-  }, [frameHistory]);
+  }, [frameHistory, configs]);
 
   const selectedChartId = useRef<string>(CHART_CONFIGS[0].id);
 
   useEffect(() => {
     const draw = () => {
-      CHART_CONFIGS.forEach(config => {
+      configs.forEach(config => {
         const canvas = canvasRefs.current[config.id];
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
@@ -111,7 +114,7 @@ export function LiveCharts() {
         for (let i = 0; i <= 4; i++) {
           const val = config.max - (i / 4) * (config.max - config.min);
           const y = (i / 4) * cssHeight + 3;
-          ctx.fillText(`${val.toFixed(0)}${config.unit}`, cssWidth - 4, y);
+          ctx.fillText(`${(config.unit === 'kg/s' ? val.toExponential(1) : val.toFixed(0))}${config.unit}`, cssWidth - 4, y);
         }
 
         if (points.length > 1) {
@@ -122,7 +125,7 @@ export function LiveCharts() {
           ctx.beginPath();
 
           points.forEach((point, i) => {
-            const x = (i / (points.length - 1)) * cssWidth;
+            const x = ((point.time - points[0].time) / Math.max(0.001, points[points.length - 1].time - points[0].time)) * cssWidth;
             const y = cssHeight - ((point.value - config.min) / (config.max - config.min)) * cssHeight;
             if (i === 0) ctx.moveTo(x, y);
             else ctx.lineTo(x, y);
@@ -142,7 +145,7 @@ export function LiveCharts() {
           ctx.fillStyle = config.color;
           ctx.font = 'bold 11px monospace';
           ctx.textAlign = 'right';
-          ctx.fillText(`${lastPoint.value.toFixed(1)}${config.unit}`, lastX - 8, lastY - 8);
+          ctx.fillText(`${lastPoint.value.toPrecision(3)}${config.unit}`, lastX - 8, lastY - 8);
         }
 
         ctx.fillStyle = '#fff';
@@ -162,14 +165,14 @@ export function LiveCharts() {
 
     animationRef.current = requestAnimationFrame(draw);
     return () => { if (animationRef.current) cancelAnimationFrame(animationRef.current); };
-  }, [chartData]);
+  }, [chartData, configs]);
 
   return (
     <div className="charts-container">
       <div className="charts-header">
-        <h3>GRÁFICOS LIVE</h3>
+        <h3>HISTORIAL DEL ESCENARIO</h3>
         <div className="chart-selector">
-          {CHART_CONFIGS.map(config => (
+          {configs.map(config => (
             <button
               key={config.id}
               className={`chart-select-btn ${selectedChartId.current === config.id ? 'active' : ''}`}
@@ -183,7 +186,7 @@ export function LiveCharts() {
       </div>
 
       <div className="charts-grid">
-        {CHART_CONFIGS.map(config => (
+        {configs.map(config => (
           <div key={config.id} className={`chart-wrapper ${selectedChartId.current === config.id ? 'selected' : ''}`}>
             <canvas
               ref={el => { if (el) canvasRefs.current[config.id] = el; }}
@@ -196,7 +199,7 @@ export function LiveCharts() {
       </div>
 
       <div className="chart-time-window">
-        Ventana: últimos 30s | Fuentes: MOCK_SIM / MATLAB_SIM / REPLAY
+        Últimas 180 muestras · tiempo simulado
       </div>
     </div>
   );

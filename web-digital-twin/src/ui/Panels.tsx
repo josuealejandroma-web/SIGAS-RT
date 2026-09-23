@@ -1,4 +1,6 @@
 import { useDigitalTwinStore, selectActiveView, selectActiveCameraPreset, selectIsReplaying, selectReplaySpeed, selectReplayProgress, selectCurrentSource, selectPerformanceMode, selectFPS, selectFrameTime, selectLatestFrame } from '../state/store';
+import { matlabCommand } from '../bridge/useMatlabBridge';
+import { PHASE_LABELS } from '../bridge/protocol';
 import { CAMERA_PRESETS } from '../scene/types';
 
 const VIEWS = [
@@ -56,10 +58,14 @@ export function CameraPresetSelector() {
 }
 
 export function ScenarioPanel() {
+  const matlab = useDigitalTwinStore(s => s.matlab);
+  const busy = ['starting', 'computing', 'playing'].includes(matlab.phase);
   const currentSource = useDigitalTwinStore(selectCurrentSource);
   const isReplaying = useDigitalTwinStore(selectIsReplaying);
   const replaySpeed = useDigitalTwinStore(selectReplaySpeed);
   const replayProgress = useDigitalTwinStore(selectReplayProgress);
+  const setActiveView = useDigitalTwinStore(s => s.setActiveView);
+  const setActiveCameraPreset = useDigitalTwinStore(s => s.setActiveCameraPreset);
 
   const scenarios = [
     { id: 'NORMAL', label: 'NORMAL', icon: '✅' },
@@ -67,6 +73,7 @@ export function ScenarioPanel() {
     { id: 'GAS_LEAK_TECHNICAL', label: 'FUGA TÉCNICA', icon: '🔧' },
     { id: 'GAS_LEAK_LIVING', label: 'FUGA LIVING', icon: '🛋️' },
     { id: 'PIPE_RUPTURE_LIVING', label: 'ROTURA LIVING', icon: '💥' },
+    { id: 'PRESSURE_DROP_NO_GAS', label: 'CAÍDA SIN GAS', icon: '📉' },
     { id: 'FALSE_PRESSURE_SPIKE', label: 'FALSO PICO', icon: '📈' },
     { id: 'PRESSURE_SENSOR_FAILURE', label: 'FALLO PRESIÓN', icon: '📉' },
     { id: 'GAS_SENSOR_FAILURE_Z3', label: 'FALLO GAS Z3', icon: '🔴' },
@@ -74,10 +81,38 @@ export function ScenarioPanel() {
     { id: 'FULL_DEMO', label: 'FULL DEMO', icon: '🎬' },
   ] as const;
 
+  const limitation = matlab.scenario.includes('PIPE_RUPTURE') ? 'Limitación conocida: el modelo puede clasificar esta rotura como GAS_LEAK. No se fuerza el evento PIPE_RUPTURE.'
+    : matlab.scenario.includes('PRESSURE_DROP') ? 'Caída de presión de rama sin señal de gas. No representa una caída de suministro. El controlador actual alarma sin cerrar válvulas.'
+    : matlab.scenario.includes('FULL_DEMO') ? 'Secuencia de estímulos: el enclavamiento puede impedir el rearme automático; no se fuerzan aperturas.'
+    : '';
   const handleScenarioClick = (scenarioId: string) => {
     if (currentSource === 'MOCK_SIM') {
       // This will be connected to the mock simulator
       window.dispatchEvent(new CustomEvent('mock-scenario-change', { detail: { scenario: scenarioId } }));
+      return;
+    }
+
+    // Request only a predefined simulation stimulus; actuator states come
+    // exclusively from the model's telemetry.
+    if (currentSource !== 'MATLAB_SIM' || !matlab.connected || busy) return;
+    matlabCommand('run', scenarioId);
+    const visualScenario = {
+      NORMAL: { view: 'CASA', camera: 'EXTERIOR' },
+      GAS_LEAK_KITCHEN: { view: 'SEGURIDAD', camera: 'COCINA' },
+      GAS_LEAK_TECHNICAL: { view: 'SEGURIDAD', camera: 'AREA_TECNICA' },
+      GAS_LEAK_LIVING: { view: 'SEGURIDAD', camera: 'LIVING' },
+      PIPE_RUPTURE_LIVING: { view: 'TUBERIAS', camera: 'LIVING' },
+      PRESSURE_DROP_NO_GAS: { view: 'PRESION', camera: 'MANIFOLD_MEDIDOR' },
+      FALSE_PRESSURE_SPIKE: { view: 'PRESION', camera: 'MANIFOLD_MEDIDOR' },
+      PRESSURE_SENSOR_FAILURE: { view: 'PRESION', camera: 'MANIFOLD_MEDIDOR' },
+      GAS_SENSOR_FAILURE_Z3: { view: 'SEGURIDAD', camera: 'LIVING' },
+      MULTI_ZONE_LEAK: { view: 'XRAY', camera: 'VISTA_SUPERIOR' },
+      FULL_DEMO: { view: 'XRAY', camera: 'XRAY' },
+    } as const;
+    const preset = visualScenario[scenarioId as keyof typeof visualScenario];
+    if (preset) {
+      setActiveView(preset.view);
+      setActiveCameraPreset(preset.camera);
     }
   };
 
@@ -85,16 +120,24 @@ export function ScenarioPanel() {
     <div className="scenario-panel">
       <div className="panel-header">
         <h3>ESCENARIOS</h3>
-        <span className="source-indicator">{currentSource === 'MOCK_SIM' ? '🎮 CONTROL LOCAL' : '🔬 CONTROLLED BY MATLAB'}</span>
+        <span className="source-indicator">{currentSource === 'MOCK_SIM' ? '🎮 CONTROL LOCAL' : '🔬 ESCENARIOS MATLAB'}</span>
       </div>
 
+      {currentSource === 'MATLAB_SIM' && <div className="matlab-session">
+        <p>{matlab.connected ? '● Sesión conectada' : '○ Sesión no disponible'} · {PHASE_LABELS[matlab.phase]}</p>
+        <p>{matlab.scenario} {matlab.phase === 'completed' ? '· Resultado final; no es tiempo real continuo.' : ''}</p>
+        {matlab.message && <p role="alert">{matlab.message}</p>}
+        <button disabled={busy} onClick={() => matlabCommand(matlab.connected ? 'stop' : 'start')}>{matlab.connected ? 'Cerrar sesión MATLAB' : 'Conectar MATLAB'}</button>
+        <p>El modelo calcula y después reproduce la telemetría. La sesión queda abierta para otra prueba.</p>
+      </div>}
+      {limitation && <p className="model-limitation" role="note">{limitation}</p>}
       <div className="scenario-grid">
         {scenarios.map(scenario => (
           <button
             key={scenario.id}
             className="scenario-btn"
             onClick={() => handleScenarioClick(scenario.id)}
-            disabled={currentSource !== 'MOCK_SIM' || isReplaying}
+            disabled={isReplaying || (currentSource === 'MATLAB_SIM' && (!matlab.connected || busy))}
             title={scenario.label}
           >
             <span className="scenario-icon">{scenario.icon}</span>
@@ -175,6 +218,7 @@ export function ReplayControls() {
 }
 
 export function ConnectionStatus() {
+  const matlab = useDigitalTwinStore(s => s.matlab);
   const connectionStatus = useDigitalTwinStore(s => s.connectionStatus);
   const currentSource = useDigitalTwinStore(selectCurrentSource);
 
@@ -184,7 +228,9 @@ export function ConnectionStatus() {
     DISCONNECTED: { label: 'DISCONNECTED', className: 'disconnected', icon: '🔴' },
   };
 
-  const config = statusConfig[connectionStatus];
+  const config = currentSource === 'MATLAB_SIM'
+    ? { label: (matlab.connected ? 'CONECTADO · ' : '') + PHASE_LABELS[matlab.phase], className: matlab.connected ? 'live' : 'disconnected', icon: matlab.connected ? '🟢' : '🔴' }
+    : statusConfig[connectionStatus];
 
   return (
     <div className={`connection-status ${config.className}`}>

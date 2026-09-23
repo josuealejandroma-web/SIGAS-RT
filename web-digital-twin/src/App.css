@@ -44,15 +44,17 @@ body {
 .app {
   display: grid;
   grid-template-rows: auto 1fr auto;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   height: 100vh;
   width: 100vw;
 }
 
 /* Header */
 .app-header {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
   align-items: center;
   padding: 12px 24px;
   background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
@@ -91,6 +93,7 @@ body {
 
 .header-right {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 16px;
   justify-self: end;
@@ -153,6 +156,7 @@ body {
   font-family: inherit;
   cursor: pointer;
   min-width: 200px;
+  max-width: 240px;
 }
 
 .preset-select:focus {
@@ -282,7 +286,8 @@ body {
 /* Main Layout */
 .app-main {
   display: grid;
-  grid-template-columns: 1fr 360px;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -290,11 +295,37 @@ body {
   position: relative;
   width: 100%;
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
   background: var(--bg-primary);
 }
 
+/* PlayCanvas creates its canvas with height: 100%.  In a CSS grid that can
+   resolve against its own content height and grow indefinitely.  Anchor it
+   to the scene panel instead so the camera uses the visible viewport. */
+.scene-container canvas.pc-app {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.scene-container { min-width: 0; }
+.scene-container canvas { touch-action: none; }
+.scene-caption, .scene-legend { position: absolute; left: 16px; color: #d9e7f4; background: #111c2be6; padding: 10px 14px; border: 1px solid #ffffff25; border-radius: 8px; font-size: 11px; pointer-events: none; max-width: calc(100% - 32px); }
+.scene-caption { top: 12px; }
+.scene-caption small { display: block; color: #93a8bc; padding-top: 5px; }
+.scene-legend { bottom: 12px; }
+.scene-labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.scene-labels button { position: absolute; transform: translate(-50%, -120%); pointer-events: auto; color: #e6f6ff; background: #132b40ed; border: 1px solid #65b9dc; border-radius: 4px; padding: 4px 8px; font: 12px monospace; white-space: nowrap; cursor: pointer; }
+.matlab-session { padding: 10px 0; font-size: 11px; color: #9cb8d1; }
+.matlab-session button { padding: 7px 12px; margin: 8px 8px 0 0; cursor: pointer; }
+.matlab-session p { margin-top: 6px; }
+.model-limitation { border-left: 3px solid #ffaa00; padding: 8px 12px; margin: 8px 0; color: #f5cc86; font-size: 11px; }
+
 .sidebar {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: 16px;
   padding: 16px;
@@ -628,7 +659,7 @@ body {
 
 .scenario-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
   gap: 6px;
 }
 
@@ -1014,7 +1045,11 @@ body {
 
 /* Responsive */
 @media (max-width: 1200px) {
-  .app-main { grid-template-columns: 1fr; }
+  .app-main {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(280px, 1fr) auto;
+    overflow-y: auto;
+  }
   .sidebar {
     grid-template-columns: repeat(2, 1fr);
     flex-direction: row;
@@ -1039,6 +1074,25 @@ body {
 }
 
 /* Scrollbar */
+@media (max-width: 1200px) {
+  .app-header { display: flex; flex-wrap: wrap; gap: 8px 16px; padding: 8px 12px; justify-content: center; }
+  .header-left { flex-direction: row; align-items: center; gap: 8px; }
+  .header-left h1 { font-size: 18px; }
+  .header-left .subtitle { display: none; }
+  .header-center { order: 0; }
+  .header-right { width: 100%; justify-content: center; flex-wrap: wrap; gap: 8px; }
+  .preset-select { max-width: 240px; }
+  .app-main { grid-template-rows: minmax(420px, 65vh) minmax(220px, auto); }
+  .sidebar { max-height: none; overflow-y: visible; }
+  .view-tab { padding: 7px 9px; }
+}
+@media (max-width: 600px) {
+  .view-label { font-size: 10px; }
+  .header-left { display: none; }
+  .connection-status { font-size: 10px; padding: 6px; }
+  .scene-caption { font-size: 10px; padding: 6px 10px; }
+  .scene-legend { font-size: 9px; padding: 6px; }
+}
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: var(--bg-primary); }
 ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }

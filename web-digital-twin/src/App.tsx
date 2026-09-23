@@ -18,7 +18,6 @@ function App() {
   const matlabMode = import.meta.env.VITE_FORCE_SOURCE === 'MATLAB_SIM';
   useMatlabBridge(matlabMode);
   const connectionCheckIntervalRef = useRef<number | null>(null);
-  const performanceIntervalRef = useRef<number | null>(null);
   const lastFrameTimeRef = useRef<number>(0);
 
   const handleTelemetryFrame = useCallback((frame: unknown) => {
@@ -50,12 +49,6 @@ function App() {
       useDigitalTwinStore.getState().updateConnectionStatus(performance.now());
     }, 500);
 
-    performanceIntervalRef.current = window.setInterval(() => {
-      const now = performance.now();
-      const fps = lastFrameTimeRef.current > 0 ? 1000 / (now - lastFrameTimeRef.current) : 0;
-      useDigitalTwinStore.getState().updatePerformanceMetrics(Math.round(fps), now - lastFrameTimeRef.current);
-      lastFrameTimeRef.current = now;
-    }, 1000);
 
     const handleScenarioChange = (e: CustomEvent) => {
       if (mockSimulatorRef.current) {
@@ -75,7 +68,6 @@ function App() {
       mockSimulatorRef.current?.stop();
       replayPlayerRef.current?.stop();
       if (connectionCheckIntervalRef.current) clearInterval(connectionCheckIntervalRef.current);
-      if (performanceIntervalRef.current) clearInterval(performanceIntervalRef.current);
       clearInterval(replayTickInterval);
       window.removeEventListener('mock-scenario-change', handleScenarioChange as EventListener);
     };
@@ -115,9 +107,9 @@ function App() {
         </div>
 
         <aside className="sidebar">
-          <Dashboard />
           <ScenarioPanel />
-          <ReplayControls />
+          <Dashboard />
+          {!matlabMode && <ReplayControls />}
           <LiveCharts />
           <Timeline />
         </aside>

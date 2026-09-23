@@ -21,7 +21,11 @@ const EVENT_COLORS: Record<string, string> = {
 };
 
 export function Timeline() {
-  const replayFrames = useDigitalTwinStore(selectReplayFrames);
+  const source = useDigitalTwinStore(s => s.currentSource);
+  const history = useDigitalTwinStore(s => s.frameHistory);
+  const latest = useDigitalTwinStore(s => s.latestFrame);
+  const storedReplay = useDigitalTwinStore(selectReplayFrames);
+  const replayFrames = useMemo(() => source === 'MATLAB_SIM' ? [...history, ...(latest ? [latest] : [])] : storedReplay, [source, history, latest, storedReplay]);
   const replayIndex = useDigitalTwinStore(selectReplayIndex);
   const isReplaying = useDigitalTwinStore(selectIsReplaying);
   const setReplayIndex = useDigitalTwinStore(s => s.setReplayIndex);
@@ -156,7 +160,7 @@ export function Timeline() {
       });
 
       // Current position indicator
-      const currentTime = replayFrames[Math.min(replayIndex, replayFrames.length - 1)]?.simTime ?? 0;
+      const currentTime = replayFrames[source === 'MATLAB_SIM' ? replayFrames.length - 1 : Math.min(replayIndex, replayFrames.length - 1)]?.simTime ?? 0;
       const currentX = timeToX(currentTime);
 
       ctx.strokeStyle = '#fff';
@@ -182,10 +186,10 @@ export function Timeline() {
     };
 
     draw();
-  }, [replayFrames, replayIndex, isReplaying, events]);
+  }, [replayFrames, replayIndex, isReplaying, events, source]);
 
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current || replayFrames.length < 2) return;
+    if (source === 'MATLAB_SIM' || !canvasRef.current || replayFrames.length < 2) return;
     const rect = canvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const cssWidth = canvasRef.current.clientWidth;
@@ -210,7 +214,7 @@ export function Timeline() {
     <div className="timeline-container" ref={containerRef}>
       <div className="timeline-header">
         <h3>TIMELINE</h3>
-        <span className="timeline-status">{isReplaying ? '▶ PLAYING' : '⏸ PAUSED'}</span>
+        <span className="timeline-status">{source === 'MATLAB_SIM' ? 'EVENTOS MATLAB' : isReplaying ? '▶ PLAYING' : '⏸ PAUSED'}</span>
       </div>
       <canvas
         ref={canvasRef}

@@ -2,6 +2,8 @@ import { useDigitalTwinStore, selectSelectedObject, selectLatestFrame } from '..
 import { getZoneName, getValveUpstreamPressure, getValveDownstreamPressure, getValveDeltaPressure } from '../telemetry';
 
 export function SensorDetailPanel() {
+  const status = useDigitalTwinStore(s => s.matlab.phase);
+  const freshness = useDigitalTwinStore(s => s.connectionStatus);
   const selectedObject = useDigitalTwinStore(selectSelectedObject);
   const latestFrame = useDigitalTwinStore(selectLatestFrame);
 
@@ -40,8 +42,8 @@ export function SensorDetailPanel() {
             <span className={`value level-${gasData.level.toLowerCase()}`}>{gasData.level}</span>
           </div>
           <div className="detail-row">
-            <span className="label">Simulated proxy:</span>
-            <span className="value mono">{getProxyDescription(gasData.adc)}</span>
+            <span className="label">Calibración:</span>
+            <span className="value mono">ADC sin conversión a ppm</span>
           </div>
           <div className="detail-row">
             <span className="label">Estado:</span>
@@ -49,7 +51,7 @@ export function SensorDetailPanel() {
           </div>
           <div className="detail-row">
             <span className="label">Freshness:</span>
-            <span className="value">{getFreshnessLabel(latestFrame)}</span>
+            <span className="value">{status === 'completed' ? 'Resultado final' : freshness === 'LIVE' ? 'Muestra reciente' : 'Muestra anterior'}</span>
           </div>
           <div className="disclaimer">
             <strong>NOTA:</strong> Valores simulados. No representan mediciones certificadas.
@@ -75,7 +77,7 @@ export function SensorDetailPanel() {
             <span className="value mono">{pressure?.toFixed(2) ?? '—'} mbar</span>
           </div>
           <div className="detail-row">
-            <span className="label">Status:</span>
+            <span className="label">Rango (no alarma):</span>
             <span className={`value ${getPressureStatus(pressure)}`}>{getPressureStatus(pressure)}</span>
           </div>
           <div className="detail-row">
@@ -115,14 +117,14 @@ export function SensorDetailPanel() {
           </div>
           <div className="detail-row">
             <span className="label">UPSTREAM:</span>
-            <span className="value mono">P? = {upstream.toFixed(2)} mbar</span>
+            <span className="value mono">{upstream.toFixed(2)} mbar</span>
           </div>
           <div className="detail-row">
             <span className="label">DOWNSTREAM:</span>
             <span className="value mono">P? = {downstream.toFixed(2)} mbar</span>
           </div>
           <div className="detail-row highlight">
-            <span className="label">DELTA:</span>
+            <span className="label">ΔP tramo (incluye tubo):</span>
             <span className="value mono">{delta.toFixed(2)} mbar</span>
           </div>
           <div className="detail-row">
@@ -160,26 +162,12 @@ function getZoneLabel(zone: string): string {
   }
 }
 
-function getProxyDescription(adc: number): string {
-  if (adc < 1500) return '~0-50 ppm (aire limpio)';
-  if (adc < 2500) return '~50-200 ppm (traza)';
-  if (adc < 3500) return '~200-500 ppm (advertencia)';
-  return '>500 ppm (crítico)';
-}
-
-function getFreshnessLabel(frame: { timestamp: number; source: string }): string {
-  const age = Date.now() - frame.timestamp;
-  if (age < 1500) return `LIVE (${frame.source})`;
-  if (age < 3000) return `STALE (${frame.source})`;
-  return `DISCONNECTED (${frame.source})`;
-}
-
 function getPressureStatus(pressure: number | undefined): string {
   if (pressure === undefined) return 'UNKNOWN';
-  if (pressure < 5) return 'LOW';
-  if (pressure < 15) return 'NOMINAL';
-  if (pressure < 25) return 'HIGH';
-  return 'CRITICAL';
+  if (pressure < 12) return 'LOW';
+  if (pressure <= 30) return 'NOMINAL';
+  if (pressure <= 40) return 'HIGH';
+  return 'FUERA DE RANGO';
 }
 
 function getPressureZone(sensorId: string): string {

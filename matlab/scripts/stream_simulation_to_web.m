@@ -1,4 +1,4 @@
-function [out, ds] = stream_simulation_to_web(scenarioName, stopTime, playbackRate)
+function [out, ds] = stream_simulation_to_web(scenarioName, stopTime, playbackRate, keepAlive, runId, statusFolder, udpPort)
 %STREAM_SIMULATION_TO_WEB Run a scenario and stream schema-v2 JSON locally.
 %   This visualization-only downlink never sends actuator commands.
 
@@ -6,6 +6,10 @@ arguments
     scenarioName (1,1) string = "V2_NORMAL"
     stopTime (1,1) double {mustBePositive} = 5
     playbackRate (1,1) double {mustBePositive} = 1
+    keepAlive (1,1) logical = false
+    runId (1,1) string = string(java.util.UUID.randomUUID())
+    statusFolder (1,1) string = ""
+    udpPort (1,1) double = 45810
 end
 
 [out, ds] = run_scenario(scenarioName, stopTime);
@@ -24,23 +28,65 @@ udpSender = javaObject("java.net.DatagramSocket");
 udpAddress = javaMethod("getByName", "java.net.InetAddress", "127.0.0.1");
 cleanupSender = onCleanup(@()udpSender.close());
 sequence = uint32(0);
+% Sample the visualization at 30 Hz, retaining all discrete safety changes.
+% No change to solver, sensor sampling, controller or actuation.
+indices = 1;
+lastSelected = 1;
+for k = 2:size(data,1)-1
+    safetyChanged = any(data(k,[5:8 19:25]) ~= data(k-1,[5:8 19:25]));
+    if safetyChanged || telemetry.Time(k) - telemetry.Time(lastSelected) >= 1/30
+        indices(end+1) = k; %#ok<AGROW>
+        lastSelected = k;
+    end
+end
+if size(data,1) > 1, indices(end+1) = size(data,1); end
+if strlength(statusFolder) > 0
+    web_worker_status(statusFolder, "playing", scenarioName, runId);
+end
 
-for index = 1:size(data, 1)
+playbackClock = tic;
+for index = indices
+    due = (telemetry.Time(index) - telemetry.Time(1)) / playbackRate;
+    pause(max(0, due - toc(playbackClock)));
     sequence = sequence + 1;
     row = double(data(index, :));
     simTime = telemetry.Time(index);
     valid = logical(interp1(validCommand.Time, double(validCommand.Data), ...
         simTime, "previous", "extrap"));
     frame = rowToFrame(row, sequence, simTime, valid);
+    frame.runId = runId;
+    frame.flowUnit = "kg/s";
     payload = uint8(unicode2native(jsonencode(frame), "UTF-8"));
     packet = javaObject("java.net.DatagramPacket", int8(payload), ...
-        numel(payload), udpAddress, 45810);
+        numel(payload), udpAddress, udpPort);
     udpSender.send(packet);
 
-    if index < size(data, 1)
-        delay = (telemetry.Time(index + 1) - simTime) / playbackRate;
-        pause(max(0, delay));
+end
+
+% Session liveness is reported by web_simulation_worker, never by repeating data.
+if keepAlive
+    warning("SIGAS:KeepAliveDeprecated", "Use web_simulation_worker for a persistent session.");
+end
+if strlength(statusFolder) > 0
+    summary = struct("scenario", scenarioName, "runId", runId, ...
+        "frames", double(sequence), "stopTime", stopTime, ...
+        "pressureMin", min(data(:,12:16),[],1), ...
+        "pressureMax", max(data(:,12:16),[],1), ...
+        "events", unique(data(:,6)).', "states", unique(data(:,5)).', ...
+        "finalValves", data(end,19:22), "flowUnit", "kg/s");
+    beforeClose = data(:,22) > 0 & telemetry.Time > 0.5;
+    if any(beforeClose)
+        summary.maxLivingDeltaWhileOpen = max(data(beforeClose,13) - data(beforeClose,16));
+        summary.minLivingPressureWhileOpen = min(data(beforeClose,16));
     end
+    ruptureCondition = beforeClose & data(:,13) >= 12 & data(:,16) < 12 & ...
+        (data(:,13) - data(:,16)) >= 4 & data(:,18) > 0 & data(:,11) >= 3000;
+    summary.ruptureConditionSamples = sum(ruptureCondition);
+    fid = fopen(fullfile(statusFolder, scenarioName + "_result.json"), "w");
+    if fid >= 0
+        fprintf(fid, "%s", jsonencode(summary)); fclose(fid);
+    end
+    save(fullfile(statusFolder, scenarioName + "_telemetry.mat"), "data", "telemetry");
 end
 
 fprintf("WEB_STREAM_COMPLETE scenario=%s frames=%u stopTime=%.3f\n", ...
