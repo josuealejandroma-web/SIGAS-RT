@@ -20,7 +20,7 @@ interface ChartConfig {
 const CHART_CONFIGS: ChartConfig[] = [
   {
     id: 'PL',
-    label: 'PL Pressure',
+    label: 'Presión PL',
     color: '#ff6644',
     extractor: f => f.pressure?.PL ?? null,
     min: 0,
@@ -29,7 +29,7 @@ const CHART_CONFIGS: ChartConfig[] = [
   },
   {
     id: 'living_flow',
-    label: 'Living Flow',
+    label: 'Caudal del living',
     color: '#44aaff',
     extractor: f => f.flow?.living ?? null,
     min: 0,
@@ -38,7 +38,7 @@ const CHART_CONFIGS: ChartConfig[] = [
   },
   {
     id: 'Z3_gas',
-    label: 'Gas Z3 (Living)',
+    label: 'Gas Z3 (living)',
     color: '#ffaa00',
     extractor: f => f.gas?.Z3?.adc ?? null,
     min: 0,

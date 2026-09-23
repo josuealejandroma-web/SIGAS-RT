@@ -24,7 +24,7 @@ export function Dashboard() {
   const frameTime = useDigitalTwinStore(selectFrameTime);
 
   const systemStateColor = useMemo(() => systemState ? SYSTEM_STATE_COLORS[systemState] : '#666', [systemState]);
-  const systemStateLabel = useMemo(() => systemState ? SYSTEM_STATE_LABELS[systemState] : 'UNKNOWN', [systemState]);
+  const systemStateLabel = useMemo(() => systemState ? SYSTEM_STATE_LABELS[systemState] : 'DESCONOCIDO', [systemState]);
   const eventLabel = useMemo(() => EVENT_TYPE_LABELS[eventType] || eventType, [eventType]);
   const connectionLabel = currentSource === 'MATLAB_SIM' ? `${matlab.connected ? 'Sesión conectada · ' : ''}${PHASE_LABELS[matlab.phase]}` : CONNECTION_STATUS_LABELS[connectionStatus];
   const sourceLabel = useMemo(() => SOURCE_LABELS[currentSource] || currentSource, [currentSource]);
@@ -36,15 +36,15 @@ export function Dashboard() {
         <div className="dashboard-section">
           <h3>SIGAS-RT</h3>
           <div className="status-row">
-            <span className="status-label">SYSTEM STATE</span>
-            <span className="status-value waiting">WAITING FOR DATA</span>
+            <span className="status-label">ESTADO DEL SISTEMA</span>
+            <span className="status-value waiting">ESPERANDO DATOS</span>
           </div>
           <div className="status-row">
-            <span className="status-label">SOURCE</span>
+            <span className="status-label">FUENTE</span>
             <span className="status-value">{sourceLabel}</span>
           </div>
           <div className="status-row">
-            <span className="status-label">CONNECTION</span>
+            <span className="status-label">CONEXIÓN</span>
             <span className="status-value disconnected">{connectionLabel}</span>
           </div>
         </div>
@@ -60,39 +60,39 @@ export function Dashboard() {
       </div>
 
       <div className="dashboard-section">
-        <h3>SYSTEM STATE</h3>
+        <h3>ESTADO DEL SISTEMA</h3>
         <div className="status-grid">
           <div className="status-row main-status">
-            <span className="status-label">STATE</span>
+            <span className="status-label">ESTADO</span>
             <span className="status-value" style={{ color: systemStateColor }}>{systemStateLabel}</span>
           </div>
           <div className="status-row">
-            <span className="status-label">EVENT</span>
+            <span className="status-label">EVENTO</span>
             <span className="status-value warning">{eventLabel}</span>
           </div>
           <div className="status-row">
-            <span className="status-label">AFFECTED ZONE</span>
-            <span className="status-value">{affectedZoneLabel || 'None'}</span>
+            <span className="status-label">ZONA AFECTADA</span>
+            <span className="status-value">{affectedZoneLabel || 'Ninguna'}</span>
           </div>
           <div className="status-row">
-            <span className="status-label">SIM TIME</span>
+            <span className="status-label">TIEMPO SIMULADO</span>
             <span className="status-value mono">{latestFrame.simTime.toFixed(1)}s</span>
           </div>
           <div className="status-row">
-            <span className="status-label">CONNECTION</span>
+            <span className="status-label">CONEXIÓN</span>
             <span className="status-value">{connectionLabel}</span>
           </div>
         </div>
       </div>
 
       <div className="dashboard-section">
-        <h3>GAS SENSORS</h3>
+        <h3>SENSORES DE GAS</h3>
         <div className="sensor-grid">
           {gasData && Object.entries(gasData).map(([zone, data]) => (
             <div key={zone} className="sensor-card gas">
               <div className="sensor-header">
                 <span className="sensor-name">{zone} — {getZoneLabel(zone)}</span>
-                <span className={`sensor-level ${data.level.toLowerCase()}`}>{data.level}</span>
+                <span className={`sensor-level ${data.level.toLowerCase()}`}>{gasLevelLabel(data.level)}</span>
               </div>
               <div className="sensor-details">
                 <div className="detail-row">
@@ -100,11 +100,11 @@ export function Dashboard() {
                   <span className="detail-value mono">{data.adc}</span>
                 </div>
                 <div className="detail-row">
-                  <span className="detail-label">VALID</span>
-                  <span className={`detail-value ${data.valid ? 'valid' : 'invalid'}`}>{data.valid ? 'YES' : 'NO'}</span>
+                  <span className="detail-label">VÁLIDO</span>
+                  <span className={`detail-value ${data.valid ? 'valid' : 'invalid'}`}>{data.valid ? 'SÍ' : 'NO'}</span>
                 </div>
                 <div className="detail-row">
-                  <span className="detail-label">SOURCE</span>
+                  <span className="detail-label">FUENTE</span>
                   <span className="detail-value mono">{latestFrame.source}</span>
                 </div>
               </div>
@@ -114,7 +114,7 @@ export function Dashboard() {
       </div>
 
       <div className="dashboard-section">
-        <h3>PRESSURE (mbar)</h3>
+        <h3>PRESIÓN (mbar)</h3>
         <div className="sensor-grid pressure">
           {pressureData && Object.entries(pressureData).map(([sensor, value]) => (
             <div key={sensor} className="sensor-card pressure">
@@ -129,11 +129,11 @@ export function Dashboard() {
       </div>
 
       <div className="dashboard-section">
-        <h3>FLOW ({latestFrame.flowUnit ?? (latestFrame.source === 'MATLAB_SIM' ? 'kg/s' : 'L/min')})</h3>
+        <h3>CAUDAL ({latestFrame.flowUnit ?? (latestFrame.source === 'MATLAB_SIM' ? 'kg/s' : 'L/min')})</h3>
         <div className="sensor-grid">
           {flowData && Object.entries(flowData).map(([name, value]) => (
             <div key={name} className="sensor-card flow">
-              <span className="sensor-name">{name.toUpperCase()}</span>
+              <span className="sensor-name">{flowLabel(name)}</span>
               <span className="sensor-value mono">{value.toPrecision(3)}</span>
             </div>
           ))}
@@ -141,7 +141,7 @@ export function Dashboard() {
       </div>
 
       <div className="dashboard-section">
-        <h3>VALVES</h3>
+        <h3>VÁLVULAS</h3>
         <div className="valve-grid">
           {valveData && Object.entries(valveData).map(([valve, state]) => (
             <div key={valve} className={`valve-card ${state.toLowerCase()}`}>
@@ -152,11 +152,11 @@ export function Dashboard() {
               {pressureData && (
                 <div className="valve-pressures">
                   <div className="pressure-pair">
-                    <span className="pressure-label">UP</span>
+                    <span className="pressure-label">ARRIBA</span>
                     <span className="pressure-value mono">{getValveUpstream(valve, pressureData).toFixed(2)} mbar</span>
                   </div>
                   <div className="pressure-pair">
-                    <span className="pressure-label">DOWN</span>
+                    <span className="pressure-label">ABAJO</span>
                     <span className="pressure-value mono">{getValveDownstream(valve, pressureData).toFixed(2)} mbar</span>
                   </div>
                   <div className="pressure-pair delta">
@@ -171,33 +171,33 @@ export function Dashboard() {
       </div>
 
       <div className="dashboard-section">
-        <h3>INDICATORS</h3>
+        <h3>INDICADORES</h3>
         <div className="indicators-grid">
           <div className={`indicator ${buzzer ? 'active' : ''}`}>
             <span className="indicator-icon">🔊</span>
-            <span className="indicator-label">BUZZER</span>
-            <span className="indicator-state">{buzzer ? 'ON' : 'OFF'}</span>
+            <span className="indicator-label">ZUMBADOR</span>
+            <span className="indicator-state">{buzzer ? 'ENCENDIDO' : 'APAGADO'}</span>
           </div>
           <div className={`indicator ${greenLed ? 'active green' : ''}`}>
             <span className="indicator-icon">🟢</span>
-            <span className="indicator-label">GREEN LED</span>
-            <span className="indicator-state">{greenLed ? 'ON' : 'OFF'}</span>
+            <span className="indicator-label">LED VERDE</span>
+            <span className="indicator-state">{greenLed ? 'ENCENDIDO' : 'APAGADO'}</span>
           </div>
           <div className={`indicator ${redLed ? 'active red' : ''}`}>
             <span className="indicator-icon">🔴</span>
-            <span className="indicator-label">RED LED</span>
-            <span className="indicator-state">{redLed ? 'ON' : 'OFF'}</span>
+            <span className="indicator-label">LED ROJO</span>
+            <span className="indicator-state">{redLed ? 'ENCENDIDO' : 'APAGADO'}</span>
           </div>
         </div>
       </div>
 
       <div className="dashboard-section dev-info">
-        <h3>PERFORMANCE</h3>
+        <h3>RENDIMIENTO</h3>
         <div className="perf-grid">
           <div><span className="perf-label">FPS</span><span className="perf-value">{fps}</span></div>
-          <div><span className="perf-label">Frame Time</span><span className="perf-value mono">{frameTime.toFixed(2)}ms</span></div>
-          <div><span className="perf-label">Mode</span><span className="perf-value">{performanceMode}</span></div>
-          <div><span className="perf-label">Frames</span><span className="perf-value">{latestFrame.sequence}</span></div>
+          <div><span className="perf-label">Tiempo de cuadro</span><span className="perf-value mono">{frameTime.toFixed(2)}ms</span></div>
+          <div><span className="perf-label">Modo</span><span className="perf-value">{performanceModeLabel(performanceMode)}</span></div>
+          <div><span className="perf-label">Muestras</span><span className="perf-value">{latestFrame.sequence}</span></div>
         </div>
       </div>
     </div>
@@ -206,11 +206,23 @@ export function Dashboard() {
 
 function getZoneLabel(zone: string): string {
   switch (zone) {
-    case 'Z1': return 'KITCHEN';
-    case 'Z2': return 'TECHNICAL';
+    case 'Z1': return 'COCINA';
+    case 'Z2': return 'ÁREA TÉCNICA';
     case 'Z3': return 'LIVING';
     default: return zone;
   }
+}
+
+function gasLevelLabel(level: string): string {
+  return ({ NORMAL: 'NORMAL', WARNING: 'ADVERTENCIA', CRITICAL: 'CRÍTICO', FAULT: 'FALLO' } as Record<string, string>)[level] ?? level;
+}
+
+function performanceModeLabel(mode: string): string {
+  return ({ AUTO: 'AUTOMÁTICO', LOW: 'BAJO', MEDIUM: 'MEDIO', HIGH: 'ALTO' } as Record<string, string>)[mode] ?? mode;
+}
+
+function flowLabel(name: string): string {
+  return ({ main: 'PRINCIPAL', living: 'LIVING' } as Record<string, string>)[name.toLowerCase()] ?? name.toUpperCase();
 }
 
 function getValveUpstream(valve: string, pressure: { P0: number; P1: number; PK: number; PL: number; PT: number }): number {

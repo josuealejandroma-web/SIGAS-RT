@@ -82,7 +82,7 @@ function App() {
       <header className="app-header">
         <div className="header-left">
           <h1>SIGAS-RT</h1>
-          <span className="subtitle">WEB DIGITAL TWIN</span>
+          <span className="subtitle">GEMELO DIGITAL WEB</span>
         </div>
         <div className="header-center">
           <ViewSelector />
@@ -117,10 +117,10 @@ function App() {
 
       <footer className="app-footer">
         <div className="footer-left">
-          <span>SIGAS-RT Web Digital Twin — {matlabMode ? 'MATLAB STREAM' : 'MOCK DEMO'}</span>
+          <span>SIGAS-RT Gemelo Digital Web — {matlabMode ? 'TRANSMISIÓN MATLAB' : 'DEMOSTRACIÓN LOCAL'}</span>
         </div>
         <div className="footer-right">
-          <span>Renderer: WebGPU/WebGL2</span>
+          <span>Renderizador: WebGPU/WebGL2</span>
           <span>|</span>
           <span>PlayCanvas + React</span>
         </div>

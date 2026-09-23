@@ -42,7 +42,7 @@ export function Timeline() {
         events.push({
           time: frame.simTime,
           type: 'state',
-          label: frame.systemState,
+          label: stateLabel(frame.systemState),
           color: EVENT_COLORS[frame.systemState] || '#888',
           index,
         });
@@ -53,7 +53,7 @@ export function Timeline() {
         events.push({
           time: frame.simTime,
           type: 'event',
-          label: frame.eventType,
+          label: eventLabel(frame.eventType),
           color: EVENT_COLORS[frame.eventType] || '#ffaa00',
           index,
         });
@@ -68,7 +68,7 @@ export function Timeline() {
             events.push({
               time: frame.simTime,
               type: 'valve',
-              label: `${valve} CLOSED`,
+              label: `${valve} CERRADA`,
               color: EVENT_COLORS.VALVE_CLOSE,
               index,
             });
@@ -213,8 +213,8 @@ export function Timeline() {
   return (
     <div className="timeline-container" ref={containerRef}>
       <div className="timeline-header">
-        <h3>TIMELINE</h3>
-        <span className="timeline-status">{source === 'MATLAB_SIM' ? 'EVENTOS MATLAB' : isReplaying ? '▶ PLAYING' : '⏸ PAUSED'}</span>
+        <h3>CRONOLOGÍA</h3>
+        <span className="timeline-status">{source === 'MATLAB_SIM' ? 'EVENTOS MATLAB' : isReplaying ? '▶ REPRODUCIENDO' : '⏸ PAUSADO'}</span>
       </div>
       <canvas
         ref={canvasRef}
@@ -228,12 +228,24 @@ export function Timeline() {
         {Object.entries(EVENT_COLORS).map(([type, color]) => (
           <span key={type} className="legend-item" style={{ borderColor: color }}>
             <span className="legend-color" style={{ backgroundColor: color }} />
-            {type}
+            {timelineLabel(type)}
           </span>
         ))}
       </div>
     </div>
   );
+}
+
+function stateLabel(value: string): string {
+  return ({ STARTUP: 'INICIANDO', NORMAL: 'NORMAL', WARNING: 'ADVERTENCIA', CRITICAL: 'CRÍTICO', SAFE_LATCHED: 'SEGURO BLOQUEADO', FAULT: 'FALLO' } as Record<string, string>)[value] ?? value;
+}
+
+function eventLabel(value: string): string {
+  return ({ NONE: 'NINGUNO', GAS_LEAK: 'FUGA DE GAS', PRESSURE_ANOMALY: 'ANOMALÍA DE PRESIÓN', PIPE_RUPTURE: 'ROTURA DE TUBERÍA', SUPPLY_PRESSURE_LOSS: 'PÉRDIDA DE SUMINISTRO', SENSOR_FAULT: 'FALLO DE SENSOR', MULTI_ZONE: 'MÚLTIPLES ZONAS' } as Record<string, string>)[value] ?? value;
+}
+
+function timelineLabel(value: string): string {
+  return ({ ...({ WARNING: 'ADVERTENCIA', CRITICAL: 'CRÍTICO', SAFE_LATCHED: 'SEGURO BLOQUEADO', FAULT: 'FALLO', NORMAL: 'NORMAL' }), PIPE_RUPTURE: 'ROTURA DE TUBERÍA', VALVE_CLOSE: 'VÁLVULA CERRADA', RESET: 'REARME' } as Record<string, string>)[value] ?? value;
 }
 
 export function EventMarkers() {
@@ -250,7 +262,7 @@ export function EventMarkers() {
       if (frame.systemState !== lastState) {
         events.push({
           time: frame.simTime,
-          label: frame.systemState,
+          label: stateLabel(frame.systemState),
           color: EVENT_COLORS[frame.systemState] || '#888',
         });
         lastState = frame.systemState;
@@ -259,7 +271,7 @@ export function EventMarkers() {
       if (frame.eventType !== 'NONE' && frame.eventType !== lastEvent) {
         events.push({
           time: frame.simTime,
-          label: frame.eventType,
+          label: eventLabel(frame.eventType),
           color: EVENT_COLORS[frame.eventType] || '#ffaa00',
         });
         lastEvent = frame.eventType;

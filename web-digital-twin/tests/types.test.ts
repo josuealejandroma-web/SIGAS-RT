@@ -37,18 +37,18 @@ describe('Telemetry Types - Utility Functions', () => {
 
     describe('getZoneName', () => {
         it('should return correct zone names', () => {
-            expect(getZoneName(ZONE_MASKS.ZONE_KITCHEN)).toBe('Kitchen');
-            expect(getZoneName(ZONE_MASKS.ZONE_TECHNICAL)).toBe('Technical');
-            expect(getZoneName(ZONE_MASKS.ZONE_LIVING)).toBe('Living');
+      expect(getZoneName(ZONE_MASKS.ZONE_KITCHEN)).toBe('Cocina');
+      expect(getZoneName(ZONE_MASKS.ZONE_TECHNICAL)).toBe('Área técnica');
+      expect(getZoneName(ZONE_MASKS.ZONE_LIVING)).toBe('Living');
         });
 
         it('should combine multiple zones', () => {
-            expect(getZoneName(ZONE_MASKS.ZONE_KITCHEN | ZONE_MASKS.ZONE_LIVING)).toBe('Kitchen, Living');
-            expect(getZoneName(ZONE_MASKS.ZONE_KITCHEN | ZONE_MASKS.ZONE_TECHNICAL | ZONE_MASKS.ZONE_LIVING)).toBe('Kitchen, Technical, Living');
+      expect(getZoneName(ZONE_MASKS.ZONE_KITCHEN | ZONE_MASKS.ZONE_LIVING)).toBe('Cocina, Living');
+      expect(getZoneName(ZONE_MASKS.ZONE_KITCHEN | ZONE_MASKS.ZONE_TECHNICAL | ZONE_MASKS.ZONE_LIVING)).toBe('Cocina, Área técnica, Living');
         });
 
-        it('should return None for zero mask', () => {
-            expect(getZoneName(0)).toBe('None');
+      it('should return Ninguna for zero mask', () => {
+      expect(getZoneName(0)).toBe('Ninguna');
         });
     });
 

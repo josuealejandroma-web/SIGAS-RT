@@ -78,7 +78,7 @@ export function ScenarioPanel() {
     { id: 'PRESSURE_SENSOR_FAILURE', label: 'FALLO PRESIÓN', icon: '📉' },
     { id: 'GAS_SENSOR_FAILURE_Z3', label: 'FALLO GAS Z3', icon: '🔴' },
     { id: 'MULTI_ZONE_LEAK', label: 'MULTIZONA', icon: '🌐' },
-    { id: 'FULL_DEMO', label: 'FULL DEMO', icon: '🎬' },
+    { id: 'FULL_DEMO', label: 'DEMOSTRACIÓN COMPLETA', icon: '🎬' },
   ] as const;
 
   const limitation = matlab.scenario.includes('PIPE_RUPTURE') ? 'Limitación conocida: el modelo puede clasificar esta rotura como GAS_LEAK. No se fuerza el evento PIPE_RUPTURE.'
@@ -148,7 +148,7 @@ export function ScenarioPanel() {
 
       {isReplaying && (
         <div className="replay-indicator">
-          <span className="replay-badge">▶ REPLAY {Math.round(replaySpeed * 10) / 10}x</span>
+          <span className="replay-badge">▶ REPRODUCCIÓN {Math.round(replaySpeed * 10) / 10}x</span>
           <div className="replay-progress-bar">
             <div className="replay-progress-fill" style={{ width: `${replayProgress * 100}%` }} />
           </div>
@@ -186,7 +186,7 @@ export function ReplayControls() {
         <button
           className={`replay-btn ${isReplaying ? 'playing' : ''}`}
           onClick={handlePlayPause}
-          aria-label={isReplaying ? 'Pause' : 'Play'}
+          aria-label={isReplaying ? 'Pausar' : 'Reproducir'}
         >
           {isReplaying ? '⏸' : '▶'}
         </button>
@@ -198,7 +198,7 @@ export function ReplayControls() {
           value={replayProgress * 100}
           onChange={handleSeek}
           className="replay-seek"
-          aria-label="Posición de replay"
+          aria-label="Posición de reproducción"
         />
 
         <div className="replay-speed">
@@ -211,7 +211,7 @@ export function ReplayControls() {
       </div>
 
       <div className="replay-time">
-        <span>Replay Progress: {Math.round(replayProgress * 100)}%</span>
+        <span>Progreso de reproducción: {Math.round(replayProgress * 100)}%</span>
       </div>
     </div>
   );
@@ -223,9 +223,9 @@ export function ConnectionStatus() {
   const currentSource = useDigitalTwinStore(selectCurrentSource);
 
   const statusConfig = {
-    LIVE: { label: 'LIVE', className: 'live', icon: '🟢' },
-    STALE: { label: 'STALE', className: 'stale', icon: '🟡' },
-    DISCONNECTED: { label: 'DISCONNECTED', className: 'disconnected', icon: '🔴' },
+    LIVE: { label: 'EN VIVO', className: 'live', icon: '🟢' },
+    STALE: { label: 'DATOS ANTERIORES', className: 'stale', icon: '🟡' },
+    DISCONNECTED: { label: 'DESCONECTADO', className: 'disconnected', icon: '🔴' },
   };
 
   const config = currentSource === 'MATLAB_SIM'
@@ -256,7 +256,7 @@ export function PerformanceModeSelector() {
         aria-label="Modo de rendimiento"
       >
         {modes.map(mode => (
-          <option key={mode} value={mode}>{mode}</option>
+          <option key={mode} value={mode}>{({ AUTO: 'AUTOMÁTICO', LOW: 'BAJO', MEDIUM: 'MEDIO', HIGH: 'ALTO' } as Record<string, string>)[mode]}</option>
         ))}
       </select>
     </div>
@@ -275,7 +275,7 @@ export function DevPanel() {
 
   if (!showDevPanel) {
     return (
-      <button className="dev-toggle" onClick={toggleDevPanel} aria-label="Show dev panel">
+      <button className="dev-toggle" onClick={toggleDevPanel} aria-label="Mostrar panel técnico">
         🛠
       </button>
     );
@@ -284,19 +284,19 @@ export function DevPanel() {
   return (
     <div className="dev-panel">
       <div className="dev-header">
-        <h4>DEV PANEL</h4>
-        <button onClick={toggleDevPanel} aria-label="Close dev panel">✕</button>
+        <h4>PANEL TÉCNICO</h4>
+        <button onClick={toggleDevPanel} aria-label="Cerrar panel técnico">✕</button>
       </div>
       <div className="dev-grid">
         <div><span>FPS</span><span className="mono">{fps}</span></div>
-        <div><span>Frame Time</span><span className="mono">{frameTime.toFixed(2)}ms</span></div>
-        <div><span>Performance</span><span>{performanceMode}</span></div>
-        <div><span>Connection</span><span>{connectionStatus}</span></div>
-        <div><span>Source</span><span>{currentSource}</span></div>
-        <div><span>Sequence</span><span className="mono">{latestFrame?.sequence ?? '—'}</span></div>
-        <div><span>Sim Time</span><span className="mono">{latestFrame?.simTime.toFixed(1) ?? '—'}s</span></div>
-        <div><span>Event</span><span>{latestFrame?.eventType ?? '—'}</span></div>
-        <div><span>System State</span><span>{latestFrame?.systemState ?? '—'}</span></div>
+        <div><span>Tiempo de cuadro</span><span className="mono">{frameTime.toFixed(2)}ms</span></div>
+        <div><span>Rendimiento</span><span>{performanceMode}</span></div>
+        <div><span>Conexión</span><span>{connectionStatus}</span></div>
+        <div><span>Fuente</span><span>{currentSource}</span></div>
+        <div><span>Secuencia</span><span className="mono">{latestFrame?.sequence ?? '—'}</span></div>
+        <div><span>Tiempo simulado</span><span className="mono">{latestFrame?.simTime.toFixed(1) ?? '—'}s</span></div>
+        <div><span>Evento</span><span>{latestFrame?.eventType ?? '—'}</span></div>
+        <div><span>Estado del sistema</span><span>{latestFrame?.systemState ?? '—'}</span></div>
       </div>
     </div>
   );

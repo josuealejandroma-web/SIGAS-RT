@@ -96,10 +96,10 @@ export const ZONE_MASKS = {
 
 export function getZoneName(mask: number): string {
   const names: string[] = [];
-  if (mask & ZONE_MASKS.ZONE_KITCHEN) names.push('Kitchen');
-  if (mask & ZONE_MASKS.ZONE_TECHNICAL) names.push('Technical');
+  if (mask & ZONE_MASKS.ZONE_KITCHEN) names.push('Cocina');
+  if (mask & ZONE_MASKS.ZONE_TECHNICAL) names.push('Área técnica');
   if (mask & ZONE_MASKS.ZONE_LIVING) names.push('Living');
-  return names.join(', ') || 'None';
+  return names.join(', ') || 'Ninguna';
 }
 
 export function getValveUpstreamPressure(valve: keyof ValveData, pressure: PressureData): number {

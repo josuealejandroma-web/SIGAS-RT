@@ -27,7 +27,7 @@ export function SensorDetailPanel() {
         <div className="panel-content">
           <div className="detail-row">
             <span className="label">Tipo:</span>
-            <span className="value">Gas Sensor</span>
+            <span className="value">Sensor de gas</span>
           </div>
           <div className="detail-row">
             <span className="label">Variable:</span>
@@ -47,10 +47,10 @@ export function SensorDetailPanel() {
           </div>
           <div className="detail-row">
             <span className="label">Estado:</span>
-            <span className={`value ${gasData.valid ? 'valid' : 'invalid'}`}>{gasData.valid ? 'VALID' : 'INVALID'}</span>
+            <span className={`value ${gasData.valid ? 'valid' : 'invalid'}`}>{gasData.valid ? 'VÁLIDO' : 'INVÁLIDO'}</span>
           </div>
           <div className="detail-row">
-            <span className="label">Freshness:</span>
+            <span className="label">Actualización:</span>
             <span className="value">{status === 'completed' ? 'Resultado final' : freshness === 'LIVE' ? 'Muestra reciente' : 'Muestra anterior'}</span>
           </div>
           <div className="disclaimer">
@@ -73,7 +73,7 @@ export function SensorDetailPanel() {
         </div>
         <div className="panel-content">
           <div className="detail-row">
-            <span className="label">Pressure:</span>
+            <span className="label">Presión:</span>
             <span className="value mono">{pressure?.toFixed(2) ?? '—'} mbar</span>
           </div>
           <div className="detail-row">
@@ -81,15 +81,15 @@ export function SensorDetailPanel() {
             <span className={`value ${getPressureStatus(pressure)}`}>{getPressureStatus(pressure)}</span>
           </div>
           <div className="detail-row">
-            <span className="label">Zone:</span>
+            <span className="label">Zona:</span>
             <span className="value">{getPressureZone(sensorId)}</span>
           </div>
           <div className="detail-row">
-            <span className="label">Last update:</span>
+            <span className="label">Última actualización:</span>
             <span className="value mono">{latestFrame.simTime.toFixed(1)}s</span>
           </div>
           <div className="detail-row">
-            <span className="label">Source:</span>
+            <span className="label">Fuente:</span>
             <span className="value mono">{latestFrame.source}</span>
           </div>
         </div>
@@ -112,15 +112,15 @@ export function SensorDetailPanel() {
         </div>
         <div className="panel-content">
           <div className="detail-row highlight">
-            <span className="label">STATE:</span>
+            <span className="label">ESTADO:</span>
             <span className={`value valve-${valveState?.toLowerCase()}`}>{valveState}</span>
           </div>
           <div className="detail-row">
-            <span className="label">UPSTREAM:</span>
+            <span className="label">AGUAS ARRIBA:</span>
             <span className="value mono">{upstream.toFixed(2)} mbar</span>
           </div>
           <div className="detail-row">
-            <span className="label">DOWNSTREAM:</span>
+            <span className="label">AGUAS ABAJO:</span>
             <span className="value mono">P? = {downstream.toFixed(2)} mbar</span>
           </div>
           <div className="detail-row highlight">
@@ -128,11 +128,11 @@ export function SensorDetailPanel() {
             <span className="value mono">{delta.toFixed(2)} mbar</span>
           </div>
           <div className="detail-row">
-            <span className="label">REASON:</span>
+            <span className="label">MOTIVO:</span>
             <span className="value">{latestFrame.eventType}</span>
           </div>
           <div className="detail-row">
-            <span className="label">AFFECTED ZONE:</span>
+            <span className="label">ZONA AFECTADA:</span>
             <span className="value">{getZoneName(latestFrame.affectedZoneMask)}</span>
           </div>
         </div>
@@ -147,7 +147,7 @@ export function SensorDetailPanel() {
         <button className="close-btn" onClick={() => useDigitalTwinStore.getState().selectObject(null)}>✕</button>
       </div>
       <div className="panel-content">
-        <p>No detailed information available for this object.</p>
+        <p>No hay información detallada para este objeto.</p>
       </div>
     </div>
   );
@@ -163,20 +163,20 @@ function getZoneLabel(zone: string): string {
 }
 
 function getPressureStatus(pressure: number | undefined): string {
-  if (pressure === undefined) return 'UNKNOWN';
-  if (pressure < 12) return 'LOW';
+  if (pressure === undefined) return 'DESCONOCIDO';
+  if (pressure < 12) return 'BAJA';
   if (pressure <= 30) return 'NOMINAL';
-  if (pressure <= 40) return 'HIGH';
+  if (pressure <= 40) return 'ALTA';
   return 'FUERA DE RANGO';
 }
 
 function getPressureZone(sensorId: string): string {
   switch (sensorId) {
-    case 'P0': return 'SUPPLY';
-    case 'P1': return 'MANIFOLD';
-    case 'PK': return 'KITCHEN';
+    case 'P0': return 'SUMINISTRO';
+    case 'P1': return 'COLECTOR';
+    case 'PK': return 'COCINA';
     case 'PL': return 'LIVING';
-    case 'PT': return 'TECHNICAL';
+    case 'PT': return 'ÁREA TÉCNICA';
     default: return sensorId;
   }
 }

@@ -68,7 +68,7 @@ function createBaseFrame(overrides: Partial<TelemetryFrameV2> = {}): TelemetryFr
 const scenarios: Record<ScenarioName, Scenario> = {
   NORMAL: {
     name: 'NORMAL',
-    displayName: 'Normal Operation',
+    displayName: 'Operación normal',
     totalDuration: 10,
     loop: true,
     steps: [
@@ -78,7 +78,7 @@ const scenarios: Record<ScenarioName, Scenario> = {
 
   GAS_LEAK_KITCHEN: {
     name: 'GAS_LEAK_KITCHEN',
-    displayName: 'Gas Leak - Kitchen',
+    displayName: 'Fuga de gas - Cocina',
     totalDuration: 15,
     loop: false,
     steps: [
@@ -91,7 +91,7 @@ const scenarios: Record<ScenarioName, Scenario> = {
 
   GAS_LEAK_TECHNICAL: {
     name: 'GAS_LEAK_TECHNICAL',
-    displayName: 'Gas Leak - Technical Area',
+    displayName: 'Fuga de gas - Área técnica',
     totalDuration: 15,
     loop: false,
     steps: [
@@ -104,7 +104,7 @@ const scenarios: Record<ScenarioName, Scenario> = {
 
   GAS_LEAK_LIVING: {
     name: 'GAS_LEAK_LIVING',
-    displayName: 'Gas Leak - Living Room',
+    displayName: 'Fuga de gas - Living',
     totalDuration: 15,
     loop: false,
     steps: [
@@ -117,7 +117,7 @@ const scenarios: Record<ScenarioName, Scenario> = {
 
   PIPE_RUPTURE_LIVING: {
     name: 'PIPE_RUPTURE_LIVING',
-    displayName: 'Pipe Rupture - Living Room',
+    displayName: 'Rotura de tubería - Living',
     totalDuration: 20,
     loop: false,
     steps: [
@@ -132,7 +132,7 @@ const scenarios: Record<ScenarioName, Scenario> = {
 
   FALSE_PRESSURE_SPIKE: {
     name: 'FALSE_PRESSURE_SPIKE',
-    displayName: 'False Pressure Spike',
+    displayName: 'Pico falso de presión',
     totalDuration: 10,
     loop: false,
     steps: [
@@ -145,7 +145,7 @@ const scenarios: Record<ScenarioName, Scenario> = {
 
   PRESSURE_SENSOR_FAILURE: {
     name: 'PRESSURE_SENSOR_FAILURE',
-    displayName: 'Pressure Sensor Failure',
+    displayName: 'Fallo del sensor de presión',
     totalDuration: 10,
     loop: false,
     steps: [
@@ -157,7 +157,7 @@ const scenarios: Record<ScenarioName, Scenario> = {
 
   GAS_SENSOR_FAILURE_Z3: {
     name: 'GAS_SENSOR_FAILURE_Z3',
-    displayName: 'Gas Sensor Failure - Z3',
+    displayName: 'Fallo del sensor de gas - Z3',
     totalDuration: 10,
     loop: false,
     steps: [
@@ -169,7 +169,7 @@ const scenarios: Record<ScenarioName, Scenario> = {
 
   MULTI_ZONE_LEAK: {
     name: 'MULTI_ZONE_LEAK',
-    displayName: 'Multi-Zone Leak',
+    displayName: 'Fuga multizona',
     totalDuration: 20,
     loop: false,
     steps: [
@@ -183,7 +183,7 @@ const scenarios: Record<ScenarioName, Scenario> = {
 
   FULL_DEMO: {
     name: 'FULL_DEMO',
-    displayName: 'Full Demo Sequence',
+    displayName: 'Demostración completa',
     totalDuration: 45,
     loop: false,
     steps: [

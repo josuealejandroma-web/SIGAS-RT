@@ -179,7 +179,7 @@ export const CONNECTION_STATUS_LABELS: Record<string, string> = {
 };
 
 export const SOURCE_LABELS: Record<string, string> = {
-  MOCK_SIM: '🧪 MOCK SIM',
-  MATLAB_SIM: '🔬 MATLAB SIM',
+  MOCK_SIM: '🧪 SIMULACIÓN LOCAL',
+  MATLAB_SIM: '🔬 SIMULACIÓN MATLAB',
   RECORDED_REPLAY: '📼 REPLAY GRABADO',
 };
