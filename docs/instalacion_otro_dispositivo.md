@@ -1,151 +1,169 @@
-# Instalacion de SIGAS-RT en otro dispositivo
+# Instalación desde cero de SIGAS-RT
 
-Esta guia reproduce el repositorio desde un Windows 10/11 limpio. Todos los
-servicios del gemelo digital se enlazan a `127.0.0.1`; la logica critica del
-firmware no depende de Internet ni de la visualizacion.
+Guía para un usuario externo en Windows 10/11 y PowerShell. La demo web solo requiere Git, Node.js y un navegador. MATLAB, Python, PlatformIO, Wokwi, Godot y Blender se instalan según la capa que se quiera utilizar.
 
-## 1. Requisitos
+## 1. Requisitos por modalidad
 
-Instalar y dejar disponibles en `PATH`:
+| Modalidad | Herramientas | Fuente de datos |
+| --- | --- | --- |
+| Casa 3D y escenarios locales | Git, Node.js 22.23.2 o posterior con npm, navegador WebGL2/WebGPU | MOCK_SIM, sintética |
+| Modelo físico integrado | Lo anterior y MATLAB R2026a con Simulink, Simscape, Stateflow y Simscape Fluids, con licencia válida | MATLAB_SIM |
+| Firmware ESP32 | Git, Python 3.11 o posterior y PlatformIO | Control embebido |
+| Simulación firmware | Firmware compilado y Wokwi | ESP32/FreeRTOS simulado |
+| Visualizadores alternativos | Godot o Blender | Telemetría auxiliar |
 
-- Git.
-- Python 3.11 o posterior (`py` o `python`).
-- Node.js 22.23.2 o posterior, con `npm`.
-- MATLAB R2026a con Simulink, Simscape, Stateflow y Simscape Fluids.
-- Opcionales segun el flujo: Godot 4, Blender 5, Wokwi CLI y Visual Studio Code.
+Instala Git desde https://git-scm.com/downloads, Node.js desde https://nodejs.org/en/download y Python, cuando corresponda, desde https://www.python.org/downloads/. Reabre PowerShell después de instalar. MATLAB se instala desde MathWorks con sus productos y licencias; otras versiones no se dan por verificadas.
 
-Comprobar las herramientas:
+La arquitectura crítica sigue Sensor → ADC → CPU → Procesamiento en tiempo real → Actuador. Internet es necesario para descargar herramientas y dependencias; el control embebido no depende de Internet.
+
+## 2. Clonar main
+
+Comprueba las herramientas y clona en la carpeta donde quieras guardar el proyecto:
 
 ```powershell
 git --version
-py --version
 node --version
-npm --version
-matlab -batch "disp(version); ver"
-```
-
-El warning sobre una toolchain C/C++ no registrada no impide la simulacion
-normal. Solo es obligatorio configurar un compilador compatible si se genera
-codigo o se usa un modo acelerado que lo requiera.
-
-## 2. Clonar `main`
-
-```powershell
-git clone https://github.com/josuealejandroma-web/SIGAS-RT.git
+npm.cmd --version
+git clone --branch main https://github.com/josuealejandroma-web/SIGAS-RT.git
 cd SIGAS-RT
-git switch main
-git pull --ff-only origin main
+git status
 ```
 
-No copiar `.venv`, `node_modules`, `.pio`, `matlab/work`, `slprj` ni archivos
-`*.slxc` desde otro equipo. Son artefactos locales y se regeneran.
+Se usa `npm.cmd` para evitar el bloqueo de `npm.ps1` por PowerShell. No cambies permanentemente la política de ejecución. No copies `.venv`, `node_modules`, `.pio`, `tools` ni cachés MATLAB de otro equipo. Los modelos de la casa están incluidos en `web-digital-twin/public/models`; Blender no es necesario para mostrarlos.
 
-## 3. Firmware y pruebas Python
+## 3. Dependencias y verificación web
+
+Desde la raíz del clon:
 
 ```powershell
+cd web-digital-twin
+npm.cmd ci
+npm.cmd run typecheck
+npm.cmd run test
+npm.cmd run build
+```
+
+`npm ci` instala las versiones de `package-lock.json`. TypeScript, pruebas y compilación deben finalizar correctamente. Las advertencias de tamaño de archivos PlayCanvas no equivalen a un fallo. La cantidad de pruebas puede cambiar entre revisiones.
+
+## 4. Ejecutar sin MATLAB
+
+En `web-digital-twin`:
+
+```powershell
+Remove-Item Env:VITE_FORCE_SOURCE -ErrorAction SilentlyContinue
+Remove-Item Env:VITE_WS_URL -ErrorAction SilentlyContinue
+npm.cmd run dev -- --host 127.0.0.1 --strictPort
+```
+
+Abre http://127.0.0.1:5173/ y deja la terminal abierta. Debes ver la casa, las vistas antes de «Cámara», la fuente SIMULACIÓN LOCAL y escenarios habilitados. `Ctrl+C` cierra la web.
+
+Prueba inicial:
+
+1. Pulsa NORMAL: estado normal y válvulas abiertas.
+2. Pulsa XRAY y selecciona VISTA_SUPERIOR: tuberías internas visibles.
+3. Pulsa FUGA COCINA y espera advertencia, crítico y cierre de VK en la demo.
+4. Pulsa SEGURIDAD y revisa sensores e indicadores.
+5. Pulsa NORMAL para otra prueba y CASA para volver al exterior.
+
+Esto verifica la demo sintética, no MATLAB ni el firmware. Consulta el [manual del simulador](manual_simulador.md).
+
+## 5. Preparar MATLAB (opcional)
+
+Desde la raíz `SIGAS-RT`, configura la ruta real de TU instalación en la terminal actual:
+
+```powershell
+$env:MATLAB_EXE = 'C:\Program Files\MATLAB\R2026a\bin\win64\MATLAB.exe'
+Test-Path -LiteralPath $env:MATLAB_EXE
+& $env:MATLAB_EXE -batch "disp(version); ver"
+& $env:MATLAB_EXE -batch "addpath(fullfile(pwd,'matlab','scripts')); p=setup_project(); disp(p.RootFolder)"
+& $env:MATLAB_EXE -batch "addpath(fullfile(pwd,'matlab','scripts')); setup_project(); [out,ds]=run_scenario('V2_NORMAL',1); assert(~isempty(out.yout)); disp('MATLAB_SIM_OK')"
+```
+
+`Test-Path` debe devolver True. Revisa que `ver` incluya todos los productos del paso 1. La primera carga puede tardar. Estas variables afectan solo la terminal actual; no hay que copiar rutas personales de otro usuario.
+
+## 6. Ejecutar MATLAB y web
+
+Cierra la demo web con Ctrl+C. En la raíz y en la terminal donde definiste MATLAB_EXE:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\run_matlab_web_twin.ps1 -Scenario V2_NORMAL -StopTime 8 -PlaybackRate 1
+```
+
+El lanzador requiere haber instalado dependencias web previamente. Inicia Vite en 5173, WebSocket en 45811 y UDP en 45810, todos locales. Inicia MATLAB una vez y mantiene la sesión. `StopTime` admite 1 a 60 segundos y `PlaybackRate` 0.1 a 4; la demostración completa usa 40 segundos.
+
+Espera CONECTADO. MATLAB calcula y luego reproduce telemetría. SIMULACIÓN FINALIZADA conserva el resultado y deja la sesión abierta para otro escenario. Durante cálculo o reproducción espera a que termine. Los botones solicitan escenarios predefinidos; no envían órdenes directas a actuadores críticos. Los estados de válvulas y alarmas provienen del modelo. MATLAB_SIM identifica la fuente, no garantiza muestras continuamente recientes.
+
+Al terminar, espera la finalización, pulsa Cerrar sesión MATLAB y usa Ctrl+C en el lanzador para cerrar web y puente. Mantén la terminal abierta durante el uso. Los archivos de diagnóstico se crean en `tools/web-matlab-<PID>/matlab.log`; el PID cambia por sesión.
+
+## 7. Compilar firmware (opcional)
+
+Desde la raíz, con Python instalado:
+
+```powershell
+py --version
 py -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 .\.venv\Scripts\platformio.exe run -e esp32doit-devkit-v1
 .\.venv\Scripts\platformio.exe run -e esp32doit-devkit-v1-visualization
-powershell -ExecutionPolicy Bypass -File scripts\verify_all.ps1 -SkipWokwi
+powershell -ExecutionPolicy Bypass -File scripts\verify_all.ps1 -SkipWokwi -SkipGodot -SkipBlender
 ```
 
-Wokwi es opcional. Si se usa, guardar su token solo en la variable de entorno
-`WOKWI_CLI_TOKEN`; nunca en el repositorio, `.env` o configuraciones MCP.
+Si no existe `py`, usa `python -m venv .venv` con tu Python instalado. No es necesario activar el entorno virtual. PlatformIO descarga plataforma y bibliotecas en la primera compilación. La validación indicada omite herramientas opcionales no instaladas; no sustituye las pruebas web.
 
-## 4. Web en modo autonomo
+## 8. Wokwi, Godot y Blender (opcionales)
+
+El circuito está en `simulation/diagram.json` y la configuración en `simulation/wokwi.toml`. Tras compilar ambos entornos, prepara y comprueba los artefactos:
 
 ```powershell
-cd web-digital-twin
-npm ci
-npm run typecheck
-npm run test
-npm run build
-npm run dev
+.\.venv\Scripts\python.exe scripts\verify_artifact_selection.py
 ```
 
-Abrir `http://127.0.0.1:5173/`. Sin `VITE_FORCE_SOURCE`, la web usa
-`MOCK_SIM`; permite validar interfaz, escenarios y modelo 3D sin MATLAB.
+Wokwi usa `.pio/wokwi/current/firmware-merged.bin` y `firmware.elf`. No copies binarios históricos como si fueran los actuales. Sigue [circuito Wokwi](circuito_wokwi.md) y [entorno de desarrollo](entorno_desarrollo.md). La CLI necesita WOKWI_CLI_TOKEN configurado privadamente en el entorno; nunca guardes tokens en Git.
 
-Para acceder desde otro dispositivo de la misma LAN se puede ejecutar
-`npm run dev:lan`, pero ese modo solo expone la interfaz. El bridge MATLAB se
-mantiene deliberadamente en localhost y no debe exponerse a Internet.
+Los flujos alternativos están en [visualización](../visualization/README.md), [Blender](../visualization/blender/README.md) y [puente del firmware](../visualization/bridge/README.md). Son distintos del puente MATLAB de la web. No hacen falta para ejecutar la demo web.
 
-## 5. MATLAB y proyecto Simulink
+## 9. Problemas frecuentes
 
-Desde la raiz del repositorio:
+| Síntoma | Solución |
+| --- | --- |
+| Herramienta no reconocida | Reabre PowerShell y comprueba versiones y PATH. |
+| npm.ps1 bloqueado | Ejecuta npm.cmd. |
+| npm ci falla por Node | Instala una versión que cumpla el mínimo declarado y reintenta. |
+| Dependencias incompletas | Cierra Vite y ejecuta npm.cmd ci; conserva package-lock.json. |
+| Puerto ocupado | Cierra el lanzador anterior con Ctrl+C; no termines procesos desconocidos. |
+| MATLAB no encontrado | Define MATLAB_EXE en la misma terminal del lanzador y verifica Test-Path. |
+| Falta biblioteca MATLAB | Comprueba productos con ver y sus licencias. |
+| MATLAB presenta error | Revisa mensaje de interfaz y tools/web-matlab-<PID>/matlab.log. |
+| Casa ausente | Comprueba public/models, recarga y usa aceleración gráfica y WebGL2/WebGPU. |
+| Renderizado lento | Selecciona BAJO o MEDIO. |
+| Resultado estático al finalizar | Es el último resultado conservado; ejecuta otro escenario. |
+| Demo local muestra MATLAB | Elimina VITE_FORCE_SOURCE y VITE_WS_URL y reinicia Vite. |
 
-```powershell
-matlab -batch "cd(pwd); addpath(fullfile(pwd,'matlab','scripts')); p=setup_project(); disp(p.RootFolder)"
-```
-
-Prueba corta del escenario normal:
-
-```powershell
-matlab -batch "cd(pwd); addpath(fullfile(pwd,'matlab','scripts')); setup_project(); [out,ds]=run_scenario('V2_NORMAL',1); assert(~isempty(out.yout)); disp('MATLAB_SIM_OK')"
-```
-
-No usar `restoredefaultpath` durante una sesion MCP de MATLAB porque elimina
-las funciones del conector de la ruta activa.
-
-## 6. Integracion MATLAB -> web
-
-Cerrar cualquier servidor anterior que use los puertos indicados y ejecutar:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\run_matlab_web_twin.ps1 `
-  -Scenario V2_NORMAL -StopTime 30 -PlaybackRate 1
-```
-
-El script realiza estas operaciones:
-
-1. instala dependencias web con `npm ci` si `node_modules` no existe;
-2. inicia el bridge UDP `127.0.0.1:45810` -> WebSocket `127.0.0.1:45811`;
-3. inicia Vite en `http://127.0.0.1:5173` con fuente `MATLAB_SIM`;
-4. ejecuta el escenario con `Simulink.SimulationInput`;
-5. reproduce las tramas respetando `PlaybackRate`;
-6. mantiene bridge y web activos hasta que se pulse `Ctrl+C`.
-
-La interfaz muestra `LIVE` durante la recepcion, `STALE` despues de 1.5 s sin
-tramas y `DISCONNECTED` despues de 3 s. Esto no significa que MATLAB o la
-licencia hayan fallado: significa que no existe telemetria reciente. Para una
-demostracion mas larga, aumentar `StopTime` o reducir `PlaybackRate`, por
-ejemplo `-StopTime 60 -PlaybackRate 0.5`.
-
-El canal es de solo lectura. Todo mensaje del navegador hacia el bridge se
-rechaza con `READ_ONLY`; la web no controla valvulas, buzzer ni LEDs.
-
-## 7. Puertos ocupados
-
-Comprobar quien usa los puertos:
+Identifica puertos sin finalizar procesos:
 
 ```powershell
 Get-NetTCPConnection -LocalPort 5173,45811 -ErrorAction SilentlyContinue
 Get-NetUDPEndpoint -LocalPort 45810 -ErrorAction SilentlyContinue
 ```
 
-No finalizar procesos desconocidos. Cerrar primero el launcher anterior con
-`Ctrl+C`. El launcher solo detiene los procesos hijos que el mismo inicio.
+La integración MATLAB debe usar 5173 porque el puente valida ese origen. No expongas el puente a Internet. No utilices otro puerto para eludir una sesión anterior.
 
-## 8. Criterio de entrega saludable
+## 10. Actualizar y validar
 
-En un clon limpio deben cumplirse, como minimo:
+Con los procesos cerrados y los cambios propios conservados, desde la raíz:
 
 ```powershell
+git pull --ff-only origin main
 cd web-digital-twin
-npm ci
-npm run typecheck
-npm run test
-npm run build
-cd ..
-git diff --check
+npm.cmd ci
+npm.cmd run typecheck
+npm.cmd run test
+npm.cmd run build
 ```
 
-Ademas, la prueba integrada debe mostrar una trama `MATLAB_SIM` valida y el
-bridge debe rechazar cualquier mensaje ascendente como `READ_ONLY`.
+Comprueba casa visible, XRAY con tuberías, escenarios, tarjetas legibles y fuente correcta. Para MATLAB añade una ejecución conectada y completada. Consulta [índice de documentación](README.md).
 
-Limitacion conocida del modelo fisico: el escenario
-`V2_PIPE_RUPTURE_LIVING` todavia no alcanza el diferencial P1-PL de 4 mbar
-antes del cierre y por eso su clasificacion V2 permanece documentada como
-pendiente en `docs/v2/matlab_validation_checkpoint.md`.
+## 11. Límites
+
+Demo sintética, MATLAB y Wokwi son fuentes distintas. La rotura puede clasificarse como fuga de gas en el modelo MATLAB actual; la interfaz muestra la limitación. Los ADC, tiempos simulados y modelos visuales no certifican una instalación real. Consulta [limitaciones V2](v2/limitaciones_v2.md) y [validación MATLAB](v2/matlab_validation_checkpoint.md).

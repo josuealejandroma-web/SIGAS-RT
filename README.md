@@ -33,6 +33,10 @@ Detalles: `docs/analisis_temporal.md`, `docs/resultados_temporales.md` y
 
 ## Reproduccion desde cero
 
+Para un usuario nuevo, empieza por la [guía de instalación desde cero](docs/instalacion_otro_dispositivo.md). Incluye clonación, instalación de dependencias, primera prueba sin MATLAB, integración MATLAB, firmware y soluciones a errores frecuentes. El [índice de documentación](docs/README.md) reúne las guías de instalación, uso y arquitectura.
+
+La demo de la casa solo requiere Git, Node.js y navegador; las demás herramientas de la tabla son necesarias únicamente para sus respectivas capas.
+
 Requisitos usados en esta revision:
 
 | Herramienta | Version usada | Instalacion reproducible |
@@ -106,8 +110,8 @@ Gemelo web sin MATLAB (datos sinteticos locales):
 
 ```powershell
 cd web-digital-twin
-npm ci
-npm run dev
+npm.cmd ci
+npm.cmd run dev -- --host 127.0.0.1 --strictPort
 ```
 
 Gemelo web con MATLAB/Simulink/Simscape, desde la raiz del repositorio:
@@ -117,9 +121,7 @@ powershell -ExecutionPolicy Bypass -File scripts\run_matlab_web_twin.ps1 `
   -Scenario V2_NORMAL -StopTime 30 -PlaybackRate 1
 ```
 
-El lanzador deja web y bridge activos hasta `Ctrl+C`. `LIVE MATLAB_SIM` aparece
-solo mientras llegan tramas; tras 1.5 s pasa a `STALE` y tras 3 s a
-`DISCONNECTED`, de forma intencional para no presentar telemetria vieja.
+Instala primero dependencias web y configura `MATLAB_EXE` con la ruta de tu instalación como indica la guía. Cierra cualquier demo que ya use el puerto 5173. El lanzador mantiene una sesión MATLAB, web y puente hasta `Ctrl+C`. Los botones solicitan escenarios predefinidos: MATLAB calcula y luego reproduce telemetría. `SIMULACIÓN FINALIZADA` conserva el último resultado y permite otra prueba. El estado de sesión y la antigüedad de las muestras son conceptos distintos; el resultado final no es tiempo real continuo.
 
 Blender ofrece un consumidor LIVE alternativo con el modelo maestro y un panel
 de escenarios en `Sidebar (N) > SIGAS-RT`:

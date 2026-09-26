@@ -51,9 +51,8 @@ body {
 
 /* Header */
 .app-header {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
   gap: 12px;
   align-items: center;
   padding: 12px 24px;
@@ -88,14 +87,15 @@ body {
 }
 
 .header-center {
-  justify-self: center;
+  justify-self: start;
 }
 
 .header-right {
   display: flex;
-  flex-wrap: wrap;
+  min-width: 0;
+  width: 100%;
   align-items: center;
-  gap: 16px;
+  gap: 10px;
   justify-self: end;
 }
 
@@ -144,6 +144,8 @@ body {
 .camera-preset-selector {
   display: flex;
   align-items: center;
+  flex: 1 1 200px;
+  min-width: 130px;
 }
 
 .preset-select {
@@ -155,7 +157,8 @@ body {
   font-size: 0.75rem;
   font-family: inherit;
   cursor: pointer;
-  min-width: 200px;
+  min-width: 0;
+  width: 100%;
   max-width: 240px;
 }
 
@@ -168,6 +171,8 @@ body {
 /* Connection Status */
 .connection-status {
   display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
@@ -183,6 +188,8 @@ body {
 
 .status-icon { font-size: 0.8rem; }
 .source-text { color: var(--text-muted); font-family: inherit; }
+.status-text { min-width: 0; }
+.perf-mode-selector, .dev-toggle { flex-shrink: 0; }
 
 /* Performance Mode Selector */
 .perf-mode-selector .mode-select {
@@ -424,11 +431,18 @@ body {
 /* Sensor Grid */
 .sensor-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
-.sensor-grid.pressure { grid-template-columns: repeat(5, 1fr); }
+.sensor-grid.pressure { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.sensor-card { min-width: 0; overflow-wrap: anywhere; }
+.sensor-card .sensor-header { flex-wrap: wrap; gap: 4px; }
+.sensor-card.pressure { padding: 8px 4px; }
+.sensor-card.pressure .sensor-value { font-size: 0.7rem; }
+.sensor-card .detail-row { flex-wrap: wrap; gap: 2px 6px; padding: 6px 4px; }
+.status-row { gap: 8px; }
+.status-row .status-value { min-width: 0; overflow-wrap: anywhere; text-align: right; }
 
 .sensor-card {
   background: var(--bg-tertiary);
@@ -676,7 +690,9 @@ body {
   font-size: 0.55rem;
   cursor: pointer;
   transition: all var(--transition);
-  white-space: nowrap;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .scenario-btn:hover:not(:disabled) {
@@ -822,6 +838,7 @@ body {
 
 .chart-selector {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -1080,7 +1097,10 @@ body {
   .header-left h1 { font-size: 18px; }
   .header-left .subtitle { display: none; }
   .header-center { order: 0; }
-  .header-right { width: 100%; justify-content: center; flex-wrap: wrap; gap: 8px; }
+  .header-right { width: 100%; justify-content: flex-start; flex-wrap: wrap; gap: 8px; }
+  .header-center { flex: 1 1 auto; }
+  .camera-preset-selector { flex: 0 1 240px; }
+  .connection-status { flex: 0 1 auto; }
   .preset-select { max-width: 240px; }
   .app-main { grid-template-rows: minmax(420px, 65vh) minmax(220px, auto); }
   .sidebar { max-height: none; overflow-y: visible; }

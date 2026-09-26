@@ -9,7 +9,7 @@ Abre la dirección local que te haya proporcionado el operador:
 
 <http://127.0.0.1:5173/>
 
-Espera a ver `MATLAB_SIM` y `Sesión conectada`. Si aparece `CALCULANDO` o
+En la demo sin MATLAB verás `SIMULACIÓN LOCAL` (`MOCK_SIM`) y podrás probar los botones directamente. Para usar el modelo MATLAB, espera a ver `MATLAB_SIM` y `Sesión conectada`. Si aparece `CALCULANDO` o
 `REPRODUCIENDO RESULTADOS`, espera a que termine antes de pulsar otro escenario.
 
 ## Controles de la escena 3D
@@ -23,6 +23,8 @@ Espera a ver `MATLAB_SIM` y `Sesión conectada`. Si aparece `CALCULANDO` o
 - Pulsa una etiqueta de sensor o válvula para ver su detalle.
 
 ## Ejecutar un escenario
+
+Los pasos de cálculo y reproducción siguientes corresponden a MATLAB. En la demo local, los escenarios son secuencias sintéticas y empiezan directamente al pulsar su botón.
 
 1. En el panel `ESCENARIOS`, pulsa el caso que quieras observar.
 2. Espera durante `CALCULANDO`.
